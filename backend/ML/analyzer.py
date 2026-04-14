@@ -1,0 +1,44 @@
+def analyze_columns(df, target_col, is_classification=False):
+    report = {}
+    
+    if is_classification:
+        counts = df[target_col].value_counts()
+        imbalance_ratio = counts.max() / counts.min() if counts.min() > 0 else 0
+        report['target_imbalance'] = {
+            'is_imbalanced': imbalance_ratio > 3.0,  # Threshold of 3:1
+            'ratio': imbalance_ratio
+        }
+
+    for col in df.columns:
+        if col == target_col:
+            continue
+        info = {}
+
+        if df[col].dtype == 'bool':
+            info['type'] = 'BOOLEAN'
+        elif df[col].dtype == 'object':
+            unique_ratio = df[col].nunique() / len(df)
+            if unique_ratio > 0.9:
+                info['type'] = 'ID_COLUMN'
+            elif df[col].nunique() <= 10:
+                info['type'] = 'CATEGORICAL_LOW'
+            else:
+                info['type'] = 'CATEGORICAL_HIGH'
+        elif df[col].dtype in ['int64', 'float64']:
+            if df[col].nunique() <= 2:
+                info['type'] = 'BINARY'
+            elif df[col].nunique() <= 10:
+                info['type'] = 'ORDINAL'
+            else:
+                info['type'] = 'NUMERICAL'
+        elif 'datetime' in str(df[col].dtype):
+            info['type'] = 'DATETIME'
+
+        info['missing_pct'] = df[col].isnull().mean() * 100
+        if info.get('type') == 'NUMERICAL':
+            info['variance'] = df[col].var()
+            info['skewness'] = df[col].skew()
+
+        report[col] = info
+
+    return report
