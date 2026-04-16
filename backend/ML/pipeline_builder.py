@@ -10,7 +10,7 @@ import pandas as pd
 def bool_to_int(X):
     return X.astype(int)
 
-def build_pipeline(preprocess_plan, model):
+def build_pipeline(preprocess_plan):
     numerical_cols = []
     numerical_log_cols = []
     categorical_low_cols = []
@@ -72,12 +72,7 @@ def build_pipeline(preprocess_plan, model):
         ('datetime', DatetimeTransformer(), datetime_cols),
     ])
 
-    full_pipeline = Pipeline(steps=[
-        ('preprocessor', preprocessor),
-        ('model', model)
-    ])
-
-    return full_pipeline
+    return preprocessor
 
 class DatetimeTransformer(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
