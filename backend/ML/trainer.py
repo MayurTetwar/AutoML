@@ -92,7 +92,6 @@ def start_model_building(df, target_col, problemTypeB, withTuning=False):
     else:
         # AUTONOMOUS TUNING MODE
         print("\n🔍 Tuning Mode — Auto-Searching for Best Model...")
-        print("⚠️  This may take up to 10 minutes...\n")
 
         try:
             # The new tuner returns 4 values, including the dynamically chosen model name
@@ -102,8 +101,9 @@ def start_model_building(df, target_col, problemTypeB, withTuning=False):
                 y_train           = y_train_full,
                 is_classification = problemTypeB,
                 use_balanced      = use_balanced,
-                timeout           = 600  # Default 10 minute search budget
+                timeout           = 120  # Seconds
             )
+            best_pipeline.fit(X_train_full, y_train_full)
             print("Done! Pipeline trained successfully ✅")
             joblib.dump(best_pipeline, "output_models/model.pkl")
             print("Model saved → output_models/model.pkl 💾")

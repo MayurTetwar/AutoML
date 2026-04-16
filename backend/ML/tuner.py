@@ -149,7 +149,6 @@ def _get_regressor_model(trial):
 
     return model_name, model
 
-
 # ─────────────────────────────────────────────
 # CLASSIFICATION TUNER
 # ─────────────────────────────────────────────
@@ -208,10 +207,6 @@ def tune_classifier(preprocessor, X_train, y_train,
         if k.startswith(prefix)
     }
 
-    print(f"\n✅ Best Model    : {best_model_name}")
-    print(f"📋 Best Params   : {best_params}")
-    print(f"🏆 Best CV Score : {study.best_value:.4f}")
-    print(f"🔢 Total Trials  : {len(study.trials)}")
 
     best_pipeline = _build_best_classifier(
         best_model_name, best_params, preprocessor, weight
@@ -269,10 +264,6 @@ def tune_regressor(preprocessor, X_train, y_train, timeout=600):
         if k.startswith(prefix)
     }
 
-    print(f"\n✅ Best Model    : {best_model_name}")
-    print(f"📋 Best Params   : {best_params}")
-    print(f"🏆 Best CV Score : {study.best_value:.4f}")
-    print(f"🔢 Total Trials  : {len(study.trials)}")
 
     best_pipeline = _build_best_regressor(
         best_model_name, best_params, preprocessor
