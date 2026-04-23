@@ -2,7 +2,7 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from typing import Annotated
 import pandas as pd
 import io
-from ml_trianing.trainer import start_model_building
+from ml_training.trainer import start_model_building
 
 router = APIRouter(       
     prefix="/train",
