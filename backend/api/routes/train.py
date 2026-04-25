@@ -17,9 +17,8 @@ async def train(
     file:                        Annotated[UploadFile, File(..., description="CSV or Excel dataset")],
     target_column:               Annotated[str,  Form(..., description="Target column name")],
     problem_type_classification: Annotated[bool, Form(..., description="True = Classification, False = Regression")],
-    with_tuning:                 Annotated[bool, Form(..., description="True = Optuna tuning, False = manual model")],
-    timeout:                     Annotated[int,  Form(ge=60, description="Tuning timeout in seconds (min 60)")] = 300,
-    model_name:                  Annotated[str,  Form(description=f"Model name — Classification: {classification_models} | Regression: {regression_models})")] = "Random Forest"
+    timeout:                     Annotated[int,  Form(...,ge=60, description="Tuning timeout in seconds (min 60)")] = 300,
+    model_name:                  Annotated[str,  Form(...,description=f"Model name — Classification: {classification_models} | Regression: {regression_models})")] = "Random Forest"
 ):
 
     if not file.filename.endswith(('.csv', '.xlsx', '.xls')):
@@ -47,14 +46,14 @@ async def train(
         )
 
     try:
+       # train.py — update this call
         report = start_model_building(
-            df,
+            df           = df,
             target_col   = target_column,
             problemTypeB = problem_type_classification,
-            withTuning   = with_tuning,
-            timeout      = timeout,
             modelName    = model_name,
-            file_name    = file.filename
+            timeout      = timeout,
+            file_name    = file.filename,
         )
         return report
 

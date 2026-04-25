@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 import joblib
+import shap
 import pandas as pd
 import numpy as np
 import os
@@ -150,7 +151,6 @@ async def get_features_endpoint(model_id: str):
         "example_input":  {feat: "?" for feat in features}
     })
 
-
 # ─────────────────────────────────────────────
 # 4. POST /models/{model_id}/predict/
 #    Generic prediction — works for any model
@@ -215,3 +215,61 @@ async def predict(model_id: str, input_data: dict):
             pass
 
     return JSONResponse(status_code=200, content=result)
+
+
+# ─────────────────────────────────────────────
+# 5. DELETE /models/{model_id}/
+#    Deletes a model (both .pkl file and metadata)
+# ─────────────────────────────────────────────
+@router.delete("/{model_id}")
+async def delete_model(model_id: str):
+    """
+    Delete a trained model permanently.
+    Removes both the .pkl file and metadata entry.
+    """
+    # 1. Load metadata
+    data = load_metadata()
+
+    # 2. Check if model exists
+    if model_id not in data:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Model '{model_id}' not found."
+        )
+
+    # 3. Get model info before deletion
+    model_info = data[model_id]
+    model_filename = f"{model_id}.pkl"
+    model_path = os.path.join(MODELS_DIR, model_filename)
+
+    # 4. Delete .pkl file
+    if os.path.exists(model_path):
+        try:
+            os.remove(model_path)
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to delete model file: {str(e)}"
+            )
+
+    # 5. Remove from metadata
+    del data[model_id]
+
+    # 6. Save updated metadata
+    try:
+        with open(METADATA_FILE, 'w') as f:
+            json.dump(data, f, indent=4)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update metadata: {str(e)}"
+        )
+
+    return JSONResponse(status_code=200, content={
+        "message":    f"Model '{model_id}' deleted successfully",
+        "deleted_model": {
+            "model_id":   model_id,
+            "model_name": model_info.get("model_name", "Unknown"),
+            "type":       model_info.get("problem_type", "Unknown"),
+        }
+    })
