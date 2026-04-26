@@ -1,9 +1,11 @@
 from datetime import datetime
-from imblearn.over_sampling import SMOTE
+
 import joblib
 import uuid
 import json
 import numpy as np
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
     accuracy_score, r2_score,
@@ -92,7 +94,7 @@ def start_model_building(df, target_col, problemTypeB,
     preprocessor = build_pipeline(preprocess_plan)
 
     # ── 5. Train / Test split ──────────────────
-    X = df.drop(columns=[target_col])
+    X = pd.DataFrame(df.drop(columns=[target_col]))
     y = df[target_col]
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -100,15 +102,14 @@ def start_model_building(df, target_col, problemTypeB,
         stratify=y if problemTypeB else None
     )
 
-    # ── 6. Only apply SMOTE if imbalance is significant ──────────────────
-    if use_balanced and problemTypeB:
-        imbalance_ratio = report['target_imbalance']['ratio']
-        if imbalance_ratio > 5.0:  
-            sm = SMOTE(random_state=42)
-            X_train = preprocessor.fit_transform(X_train, y_train)
-            X_train, y_train = sm.fit_resample(X_train, y_train)
+    if problemTypeB:
+        label_encoder = LabelEncoder()
+        y_train = pd.Series(label_encoder.fit_transform(y_train), index=y_train.index)
+        y_test = pd.Series(label_encoder.transform(y_test), index=y_test.index)
+    else:
+        label_encoder = None
 
-    # ── 7. Tune selected model with Optuna ─────
+    # ── 6. Tune selected model with Optuna ─────
     try:
         best_pipeline = tune_selected_model(
             preprocessor      = preprocessor,
@@ -119,18 +120,18 @@ def start_model_building(df, target_col, problemTypeB,
             use_balanced      = use_balanced,
             timeout           = timeout,
         )
-        best_pipeline.fit(X_train, y_train)
+        best_pipeline.fit(X_train, y_train)  
         # Fit the pipeline with best parameters on full training data
         joblib.dump(best_pipeline, f"output_models/{model_id}.pkl")
 
     except Exception as e:
         print(f"  Error during tuning: {e}")
         return None
-    print(8)
-    # ── 8. Evaluate ────────────────────────────
+
+    # ── 7. Evaluate ────────────────────────────
     score, metrics = _evaluate(best_pipeline, X_test, y_test, problemTypeB)
 
-    # ── 9. Save metadata ───────────────────────
+    # ── 8. Save metadata ───────────────────────
     metadata = {
         'File Name':     file_name,
         'model_id':      model_id,
@@ -142,6 +143,8 @@ def start_model_building(df, target_col, problemTypeB,
         'dataset_shape': list(df.shape),
         'created_at':    datetime.now().strftime("%Y-%m-%d / %H:%M:%S")
     }
+    if label_encoder is not None:
+        metadata['target_classes'] = label_encoder.classes_.tolist()
     save_model_metadata(model_id, metadata)
 
     return metadata

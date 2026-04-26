@@ -1,4 +1,5 @@
 import optuna
+import pandas as pd
 from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, KFold
 from sklearn.pipeline import Pipeline
 from .models import _build_best_regressor, _build_best_classifier
@@ -187,7 +188,6 @@ def tune_selected_model(preprocessor, X_train, y_train,
                 X_train, y_train,
                 train_size=10000, random_state=42, stratify=y_train
             )
-            print(f"  Sampling 10,000 rows for faster tuning search")
         else:
             X_tune, y_tune = X_train, y_train
 
@@ -201,7 +201,6 @@ def tune_selected_model(preprocessor, X_train, y_train,
                 X_train, y_train,
                 train_size=10000, random_state=42
             )
-            print(f"  Sampling 10,000 rows for faster tuning search")
         else:
             X_tune, y_tune = X_train, y_train
 
@@ -209,32 +208,33 @@ def tune_selected_model(preprocessor, X_train, y_train,
         scoring     = "r2"
         direction   = "maximize"
 
+    if not isinstance(X_tune, pd.DataFrame):
+        raise ValueError(
+            f"X_tune must be a pandas DataFrame for ColumnTransformer string column selectors, got {type(X_tune)}."
+        )
+
     # ── Objective ──────────────────────────────
     def objective(trial):
-        try:
-            if is_classification:
-                model = _get_single_classifier(trial, model_name, weight)
-            else:
-                model = _get_single_regressor(trial, model_name)
+        if is_classification:
+            model = _get_single_classifier(trial, model_name, weight)
+        else:
+            model = _get_single_regressor(trial, model_name)
 
-            pipeline = Pipeline(steps=[
-                ("preprocessor", preprocessor),
-                ("model", model)
-            ])
-            scores = cross_val_score(
-                pipeline, X_tune, y_tune,
-                cv=cv_strategy, scoring=scoring, n_jobs=1
-            )
-            return scores.mean()
-        except Exception as e:
-            print(f"\n[Optuna Trial Failed]: {e}")
-            raise optuna.TrialPruned()
+        pipeline = Pipeline(steps=[
+            ("preprocessor", preprocessor),
+            ("model", model)
+        ])
+        scores = cross_val_score(
+            pipeline, X_tune, y_tune,
+            cv=cv_strategy, scoring=scoring, n_jobs=1
+        )
+        return scores.mean()
 
     # ── Run Study ──────────────────────────────
     study = optuna.create_study(
         direction=direction,
         sampler=optuna.samplers.TPESampler(seed=42),
-        # pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=3)
+        pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=3)
     )
     study.optimize(objective, timeout=timeout, n_jobs=1, show_progress_bar=True)
 
@@ -254,25 +254,3 @@ def tune_selected_model(preprocessor, X_train, y_train,
         )
 
     return best_pipeline
-
-
-# ─────────────────────────────────────────────
-# MAIN ENTRY POINT
-# ─────────────────────────────────────────────
-
-def run_tuning(preprocessor, X_train, y_train,
-               model_name, is_classification,
-               use_balanced=False, timeout=300):
-    """
-    Main entry point called from trainer.py.
-    Always tunes the selected model — no more random model search.
-    """
-    return tune_selected_model(
-        preprocessor      = preprocessor,
-        X_train           = X_train,
-        y_train           = y_train,
-        model_name        = model_name,
-        is_classification = is_classification,
-        use_balanced      = use_balanced,
-        timeout           = timeout,
-    )
