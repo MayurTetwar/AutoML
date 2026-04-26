@@ -17,7 +17,7 @@ async def train(
     file:                        Annotated[UploadFile, File(..., description="CSV or Excel dataset")],
     target_column:               Annotated[str,  Form(..., description="Target column name")],
     problem_type_classification: Annotated[bool, Form(..., description="True = Classification, False = Regression")],
-    timeout:                     Annotated[int,  Form(...,ge=60, description="Tuning timeout in seconds (min 60)")] = 300,
+    timeout:                     Annotated[int,  Form(...,ge=20, description="Tuning timeout in seconds (min 60)")] = 300,
     model_name:                  Annotated[str,  Form(...,description=f"Model name — Classification: {classification_models} | Regression: {regression_models})")] = "Random Forest"
 ):
 

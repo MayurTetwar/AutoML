@@ -84,7 +84,6 @@ async def list_models():
             "model_id":   model_id,
             "model_name": info.get("model_name", "Unknown"),
             "type":       "Classification" if info.get("problemTypeB") else "Regression",
-            "tuned":      info.get("tuned", False),
             "created_at": info.get("created_at", "N/A"),
         }
         for model_id, info in data.items()

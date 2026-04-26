@@ -38,6 +38,8 @@ def analyze_columns(df, target_col, is_classification=False):
                 info['type'] = 'NUMERICAL'
         elif 'datetime' in str(df[col].dtype):
             info['type'] = 'DATETIME'
+        else:
+            info['type'] = 'UNKNOWN'  # Fallback for unhandled dtypes
 
         info['missing_pct'] = df[col].isnull().mean() * 100
         if info.get('type') == 'NUMERICAL':

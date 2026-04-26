@@ -43,4 +43,3 @@ app.include_router(train_router)
 @app.get("/")
 async def root():
     return {"message": "AutoML API is running 🚀", "docs": "/docs"}
-

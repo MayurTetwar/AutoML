@@ -1,6 +1,6 @@
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder, FunctionTransformer
+from sklearn.preprocessing import PowerTransformer, StandardScaler, OneHotEncoder, FunctionTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import TargetEncoder
 import numpy as np
@@ -30,7 +30,7 @@ def build_pipeline(preprocess_plan):
             categorical_low_cols.append(col)
         elif 'target_encode' in steps:
             categorical_high_cols.append(col)
-        elif 'binary' in steps:
+        elif 'impute_mode' in steps and 'one_hot_encode' not in steps and 'target_encode' not in steps:
             binary_cols.append(col)
         elif 'extract_year' in steps:
             datetime_cols.append(col)
@@ -44,8 +44,7 @@ def build_pipeline(preprocess_plan):
 
     log_transformer = Pipeline(steps=[
         ('imputer', SimpleImputer(strategy='median')),
-        ('log', FunctionTransformer(np.log1p)),
-        ('scaler', StandardScaler())
+        ('power', PowerTransformer(method='yeo-johnson')),
     ])
 
     categorical_low_transformer = Pipeline(steps=[
@@ -86,4 +85,5 @@ class DatetimeTransformer(BaseEstimator, TransformerMixin):
             result[f"{col}_month"]     = series.dt.month
             result[f"{col}_dayofweek"] = series.dt.dayofweek
             result[f"{col}_day"]       = series.dt.day
+            result[f"{col}_is_weekend"] = (series.dt.dayofweek >= 5).astype(int) 
         return result.values
