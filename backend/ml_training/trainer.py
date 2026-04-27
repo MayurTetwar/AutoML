@@ -1,5 +1,4 @@
 from datetime import datetime
-
 import joblib
 import uuid
 import json
@@ -22,14 +21,18 @@ from .tuner import tune_selected_model
 # ─────────────────────────────────────────────
 
 def save_model_metadata(model_id, metadata):
-    metadata_file = "output_models/models_metadata.json"
-    with open(metadata_file, 'r') as f:
-        data = json.load(f)
+    try:
+        metadata_file = "output_models/models_metadata.json"
+        with open(metadata_file, 'r') as f:
+            data = json.load(f)
 
-    data[model_id] = metadata
+        data[model_id] = metadata
 
-    with open(metadata_file, 'w') as f:
-        json.dump(data, f, indent=4)
+        with open(metadata_file, 'w') as f:
+            json.dump(data, f, indent=4)
+    except Exception as e:
+        print(f"[save_model_metadata] ERROR saving metadata for {model_id}: {type(e).__name__}: {str(e)}")
+        raise
 
 
 # ─────────────────────────────────────────────
@@ -70,47 +73,47 @@ def start_model_building(df, target_col, problemTypeB,
     Removed with_tuning toggle — tuning is always ON for better accuracy.
     """
 
-    model_id = str(uuid.uuid4())
-
-    # ── 1. Analyze dataset ─────────────────────
-    report = analyze_columns(df, target_col, is_classification=problemTypeB)
-
-    # Check class imbalance for classification
-    use_balanced = False
-    if problemTypeB and 'target_imbalance' in report:
-        use_balanced = report['target_imbalance']['is_imbalanced']
-
-    # ── 2. Drop useless columns ────────────────
-    drop_cols, reasons = auto_drop_columns(df, target_col, report)
-    df = df.drop(columns=drop_cols)
-    for col in drop_cols:
-        if col in report:
-            del report[col]
-
-    # ── 3. Decide preprocessing ────────────────
-    preprocess_plan = decide_preprocessing(df, report)
-
-    # ── 4. Build preprocessor ──────────────────
-    preprocessor = build_pipeline(preprocess_plan)
-
-    # ── 5. Train / Test split ──────────────────
-    X = pd.DataFrame(df.drop(columns=[target_col]))
-    y = df[target_col]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42,
-        stratify=y if problemTypeB else None
-    )
-
-    if problemTypeB:
-        label_encoder = LabelEncoder()
-        y_train = pd.Series(label_encoder.fit_transform(y_train), index=y_train.index)
-        y_test = pd.Series(label_encoder.transform(y_test), index=y_test.index)
-    else:
-        label_encoder = None
-
-    # ── 6. Tune selected model with Optuna ─────
     try:
+        model_id = str(uuid.uuid4())
+
+        # ── 1. Analyze dataset ─────────────────────
+        report = analyze_columns(df, target_col, is_classification=problemTypeB)
+
+        # Check class imbalance for classification
+        use_balanced = False
+        if problemTypeB and 'target_imbalance' in report:
+            use_balanced = report['target_imbalance']['is_imbalanced']
+
+        # ── 2. Drop useless columns ────────────────
+        drop_cols, reasons = auto_drop_columns(df, target_col, report)
+        df = df.drop(columns=drop_cols)
+        for col in drop_cols:
+            if col in report:
+                del report[col]
+
+        # ── 3. Decide preprocessing ────────────────
+        preprocess_plan = decide_preprocessing(df, report)
+
+        # ── 4. Build preprocessor ──────────────────
+        preprocessor = build_pipeline(preprocess_plan)
+
+        # ── 5. Train / Test split ──────────────────
+        X = pd.DataFrame(df.drop(columns=[target_col]))
+        y = df[target_col]
+
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42,
+            stratify=y if problemTypeB else None
+        )
+
+        if problemTypeB:
+            label_encoder = LabelEncoder()
+            y_train = pd.Series(label_encoder.fit_transform(y_train), index=y_train.index)
+            y_test = pd.Series(label_encoder.transform(y_test), index=y_test.index)
+        else:
+            label_encoder = None
+
+        # ── 6. Tune selected model with Optuna ─────
         best_pipeline = tune_selected_model(
             preprocessor      = preprocessor,
             X_train           = X_train,
@@ -120,31 +123,31 @@ def start_model_building(df, target_col, problemTypeB,
             use_balanced      = use_balanced,
             timeout           = timeout,
         )
-        best_pipeline.fit(X_train, y_train)  
+        best_pipeline.fit(X_train, y_train)
         # Fit the pipeline with best parameters on full training data
         joblib.dump(best_pipeline, f"output_models/{model_id}.pkl")
 
+        # ── 7. Evaluate ────────────────────────────
+        score, metrics = _evaluate(best_pipeline, X_test, y_test, problemTypeB)
+
+        # ── 8. Save metadata ───────────────────────
+        metadata = {
+            'File Name':     file_name,
+            'model_id':      model_id,
+            'model_name':    modelName,
+            'problem_type':  'Classification' if problemTypeB else 'Regression',
+            'target_column': target_col,
+            'score':         score,       # primary score (backward compat)
+            'metrics':       metrics,     # all metrics
+            'dataset_shape': list(df.shape),
+            'created_at':    datetime.now().strftime("%Y-%m-%d / %H:%M:%S")
+        }
+        if label_encoder is not None:
+            metadata['target_classes'] = label_encoder.classes_.tolist()
+        save_model_metadata(model_id, metadata)
+
+        return metadata
+
     except Exception as e:
-        print(f"  Error during tuning: {e}")
-        return None
-
-    # ── 7. Evaluate ────────────────────────────
-    score, metrics = _evaluate(best_pipeline, X_test, y_test, problemTypeB)
-
-    # ── 8. Save metadata ───────────────────────
-    metadata = {
-        'File Name':     file_name,
-        'model_id':      model_id,
-        'model_name':    modelName,
-        'problem_type':  'Classification' if problemTypeB else 'Regression',
-        'target_column': target_col,
-        'score':         score,       # primary score (backward compat)
-        'metrics':       metrics,     # all metrics
-        'dataset_shape': list(df.shape),
-        'created_at':    datetime.now().strftime("%Y-%m-%d / %H:%M:%S")
-    }
-    if label_encoder is not None:
-        metadata['target_classes'] = label_encoder.classes_.tolist()
-    save_model_metadata(model_id, metadata)
-
-    return metadata
+        print(f"[start_model_building] FATAL ERROR: {type(e).__name__}: {str(e)}")
+        raise

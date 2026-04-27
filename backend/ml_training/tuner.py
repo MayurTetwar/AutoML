@@ -1,10 +1,15 @@
 import optuna
 import pandas as pd
+import numpy as np
+import warnings
 from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, KFold
 from sklearn.pipeline import Pipeline
 from .models import _build_best_regressor, _build_best_classifier
-
 optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+# Suppress sklearn convergence warnings
+warnings.filterwarnings("ignore", message="Objective did not converge", category=UserWarning)
+warnings.filterwarnings("ignore", message="The max_iter was reached", category=UserWarning)
 
 
 # ─────────────────────────────────────────────
@@ -14,14 +19,17 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 def _get_single_classifier(trial, model_name, weight):
     """Returns a classifier with tunable params for the selected model only."""
 
+    n_jobs = -1 if model_name in ['Random Forest', 'LightGBM', 'XGBoost'] else 1
     if model_name == "Logistic Regression":
         from sklearn.linear_model import LogisticRegression
         return LogisticRegression(
             C            = trial.suggest_float("C", 0.001, 20.0, log=True),
-            solver       = trial.suggest_categorical("solver", ["lbfgs", "saga"]),
+            solver       = trial.suggest_categorical("solver", ["lbfgs", "liblinear"]),  # Removed saga which was causing convergence issues
             class_weight = weight,
-            max_iter     = 2000,
+            max_iter     = 10000,
+            tol          = 1e-4,  # Add tolerance for better convergence
             random_state = 42,
+            n_jobs       = n_jobs,
         )
 
     elif model_name == "Ridge Classifier":
@@ -41,7 +49,7 @@ def _get_single_classifier(trial, model_name, weight):
             max_features      = trial.suggest_categorical("max_features", ["sqrt", "log2"]),
             class_weight      = weight,
             random_state      = 42,
-            n_jobs            = 1,
+            n_jobs            = n_jobs,
         )
 
     elif model_name == "XGBoost":
@@ -60,7 +68,7 @@ def _get_single_classifier(trial, model_name, weight):
             eval_metric      = "logloss",
             random_state     = 42,
             verbosity        = 0,
-            n_jobs           = 1,
+            n_jobs           = n_jobs,
         )
 
     elif model_name == "LightGBM":
@@ -80,7 +88,7 @@ def _get_single_classifier(trial, model_name, weight):
             class_weight      = weight,
             random_state      = 42,
             verbosity         = -1,
-            n_jobs            = 1,
+            n_jobs            = n_jobs,
         )
 
     elif model_name == "KNN":
@@ -89,7 +97,7 @@ def _get_single_classifier(trial, model_name, weight):
             n_neighbors = trial.suggest_int("n_neighbors", 3, 25),
             weights     = trial.suggest_categorical("weights", ["uniform", "distance"]),
             metric      = trial.suggest_categorical("metric", ["euclidean", "manhattan"]),
-            n_jobs      = 1,
+            n_jobs      = n_jobs,
         )
 
     raise ValueError(f"Unknown classifier: {model_name}")
@@ -98,12 +106,14 @@ def _get_single_classifier(trial, model_name, weight):
 def _get_single_regressor(trial, model_name):
     """Returns a regressor with tunable params for the selected model only."""
 
+    n_jobs = -1 if model_name in ['Random Forest', 'LightGBM', 'XGBoost'] else 1
     if model_name == "ElasticNet":
         from sklearn.linear_model import ElasticNet
         return ElasticNet(
             alpha    = trial.suggest_float("alpha", 0.0001, 10.0, log=True),
             l1_ratio = trial.suggest_float("l1_ratio", 0.0, 1.0),
-            max_iter = 3000,
+            max_iter = 10000,
+            tol      = 1e-4,  # Add tolerance for better convergence
         )
 
     elif model_name == "Random Forest":
@@ -115,7 +125,7 @@ def _get_single_regressor(trial, model_name):
             min_samples_leaf  = trial.suggest_int("min_samples_leaf", 1, 8),
             max_features      = trial.suggest_categorical("max_features", ["sqrt", "log2"]),
             random_state      = 42,
-            n_jobs            = 1,
+            n_jobs            = n_jobs,
         )
 
     elif model_name == "XGBoost":
@@ -133,7 +143,7 @@ def _get_single_regressor(trial, model_name):
             reg_lambda       = trial.suggest_float("reg_lambda", 0.5, 2.0),
             random_state     = 42,
             verbosity        = 0,
-            n_jobs           = 1,
+            n_jobs           = n_jobs,
         )
 
     elif model_name == "LightGBM":
@@ -152,7 +162,7 @@ def _get_single_regressor(trial, model_name):
             reg_lambda        = trial.suggest_float("reg_lambda", 0.0, 2.0),
             random_state      = 42,
             verbosity         = -1,
-            n_jobs            = 1,
+            n_jobs            = n_jobs,
         )
 
     elif model_name == "KNN":
@@ -161,7 +171,7 @@ def _get_single_regressor(trial, model_name):
             n_neighbors = trial.suggest_int("n_neighbors", 3, 25),
             weights     = trial.suggest_categorical("weights", ["uniform", "distance"]),
             metric      = trial.suggest_categorical("metric", ["euclidean", "manhattan"]),
-            n_jobs      = 1,
+            n_jobs      = n_jobs,
         )
 
     raise ValueError(f"Unknown regressor: {model_name}")
@@ -179,78 +189,91 @@ def tune_selected_model(preprocessor, X_train, y_train,
     This is much more efficient than searching across all models.
     """
 
-    weight = "balanced" if (is_classification and use_balanced) else None
+    try:
+        weight = "balanced" if (is_classification and use_balanced) else None
 
-    # Sample large datasets for faster tuning search
-    if is_classification:
-        if len(X_train) > 10000:
-            X_tune, _, y_tune, _ = train_test_split(
-                X_train, y_train,
-                train_size=10000, random_state=42, stratify=y_train
-            )
-        else:
-            X_tune, y_tune = X_train, y_train
-
-        cv_strategy = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-        scoring     = "f1_weighted"
-        direction   = "maximize"
-
-    else:
-        if len(X_train) > 10000:
-            X_tune, _, y_tune, _ = train_test_split(
-                X_train, y_train,
-                train_size=10000, random_state=42
-            )
-        else:
-            X_tune, y_tune = X_train, y_train
-
-        cv_strategy = KFold(n_splits=5, shuffle=True, random_state=42)
-        scoring     = "r2"
-        direction   = "maximize"
-
-    if not isinstance(X_tune, pd.DataFrame):
-        raise ValueError(
-            f"X_tune must be a pandas DataFrame for ColumnTransformer string column selectors, got {type(X_tune)}."
-        )
-
-    # ── Objective ──────────────────────────────
-    def objective(trial):
+        # Sample large datasets for faster tuning search
         if is_classification:
-            model = _get_single_classifier(trial, model_name, weight)
+            if len(X_train) > 10000:
+                X_tune, _, y_tune, _ = train_test_split(
+                    X_train, y_train,
+                    train_size=10000, random_state=42, stratify=y_train
+                )
+            else:
+                X_tune, y_tune = X_train, y_train
+
+            cv_strategy = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+            scoring     = "f1_weighted"
+            direction   = "maximize"
+
         else:
-            model = _get_single_regressor(trial, model_name)
+            if len(X_train) > 10000:
+                X_tune, _, y_tune, _ = train_test_split(
+                    X_train, y_train,
+                    train_size=10000, random_state=42
+                )
+            else:
+                X_tune, y_tune = X_train, y_train
 
-        pipeline = Pipeline(steps=[
-            ("preprocessor", preprocessor),
-            ("model", model)
-        ])
-        scores = cross_val_score(
-            pipeline, X_tune, y_tune,
-            cv=cv_strategy, scoring=scoring, n_jobs=1
+            cv_strategy = KFold(n_splits=5, shuffle=True, random_state=42)
+            scoring     = "r2"
+            direction   = "maximize"
+
+        if not isinstance(X_tune, pd.DataFrame):
+            raise ValueError(
+                f"X_tune must be a pandas DataFrame for ColumnTransformer string column selectors, got {type(X_tune)}."
+            )
+
+        # ── Objective ──────────────────────────────
+        def objective(trial):
+            try:
+                if is_classification:
+                    model = _get_single_classifier(trial, model_name, weight)
+                else:
+                    model = _get_single_regressor(trial, model_name)
+
+                pipeline = Pipeline(steps=[
+                    ("preprocessor", preprocessor),
+                    ("model", model)
+                ])
+
+                # Fit preprocessor first to ensure consistent feature names
+                pipeline.named_steps["preprocessor"].fit(X_tune)
+
+                scores = cross_val_score(
+                    pipeline, X_tune, y_tune,
+                    cv=cv_strategy, scoring=scoring, n_jobs=1
+                )
+                return scores.mean()
+            except Exception as e:
+                print(f"[tune_selected_model.objective] ERROR in trial: {type(e).__name__}: {str(e)}")
+                raise optuna.TrialPruned()
+
+        # ── Run Study ──────────────────────────────
+        study = optuna.create_study(
+            direction=direction,
+            sampler=optuna.samplers.TPESampler(seed=42),
+            pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=3)
         )
-        return scores.mean()
+        study.optimize(objective, timeout=timeout, n_jobs=1, show_progress_bar=True)
 
-    # ── Run Study ──────────────────────────────
-    study = optuna.create_study(
-        direction=direction,
-        sampler=optuna.samplers.TPESampler(seed=42),
-        pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=3)
-    )
-    study.optimize(objective, timeout=timeout, n_jobs=1, show_progress_bar=True)
+        # print(f"\n  Best CV score ({scoring}): {study.best_value:.4f}")
+        # print(f"  Best params: {study.best_params}")
 
-    # print(f"\n  Best CV score ({scoring}): {study.best_value:.4f}")
-    # print(f"  Best params: {study.best_params}")
+        # ── Build final pipeline with best params ──
+        best_params = study.best_params.copy()
 
-    # ── Build final pipeline with best params ──
-    best_params = study.best_params.copy()
+        if is_classification:
+            best_pipeline = _build_best_classifier(
+                model_name, best_params, preprocessor, weight
+            )
+        else:
+            best_pipeline = _build_best_regressor(
+                model_name, best_params, preprocessor
+            )
 
-    if is_classification:
-        best_pipeline = _build_best_classifier(
-            model_name, best_params, preprocessor, weight
-        )
-    else:
-        best_pipeline = _build_best_regressor(
-            model_name, best_params, preprocessor
-        )
+        return best_pipeline
 
-    return best_pipeline
+    except Exception as e:
+        print(f"[tune_selected_model] FATAL ERROR: {type(e).__name__}: {str(e)}")
+        raise
