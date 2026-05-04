@@ -29,17 +29,13 @@
 # ----------------------------------------------------------------------------------------------------
 
 from fastapi import FastAPI
-from api.routes.models import router as models_router
-from api.routes.train import router as train_router
+from api.routes import models, train
 
-app = FastAPI(
-    title="AutoML API",
-    version="1.0.0"
-)
+app = FastAPI(title="AutoML API")
 
-app.include_router(models_router)
-app.include_router(train_router)
+app.include_router(train.router)
+app.include_router(models.router)
 
 @app.get("/")
-async def root():
-    return {"message": "AutoML API is running 🚀", "docs": "/docs"}
+def health():
+    return {"status": "AutoML API is running ✅"}

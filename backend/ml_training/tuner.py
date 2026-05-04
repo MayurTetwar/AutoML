@@ -7,14 +7,10 @@ from sklearn.pipeline import Pipeline
 from .models import _build_best_regressor, _build_best_classifier
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
-# Suppress sklearn convergence warnings
+# Suppress warnings
 warnings.filterwarnings("ignore", message="Objective did not converge", category=UserWarning)
 warnings.filterwarnings("ignore", message="The max_iter was reached", category=UserWarning)
-
-
-# ─────────────────────────────────────────────
-# FOCUSED SINGLE MODEL PARAM BUILDERS
-# ─────────────────────────────────────────────
+warnings.filterwarnings("ignore", message="X does not have valid feature names", category=UserWarning)
 
 def _get_single_classifier(trial, model_name, weight):
     """Returns a classifier with tunable params for the selected model only."""
@@ -236,9 +232,6 @@ def tune_selected_model(preprocessor, X_train, y_train,
                     ("preprocessor", preprocessor),
                     ("model", model)
                 ])
-
-                # Fit preprocessor first to ensure consistent feature names
-                pipeline.named_steps["preprocessor"].fit(X_tune)
 
                 scores = cross_val_score(
                     pipeline, X_tune, y_tune,

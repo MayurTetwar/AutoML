@@ -1,7 +1,5 @@
 from datetime import datetime
-import joblib
-import uuid
-import json
+import uuid6
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
@@ -15,24 +13,9 @@ from .preprocessor import auto_drop_columns, decide_preprocessing
 from .pipeline_builder import build_pipeline
 from .tuner import tune_selected_model
 
-
-# ─────────────────────────────────────────────
-# METADATA HELPER
-# ─────────────────────────────────────────────
-
-def save_model_metadata(model_id, metadata):
-    try:
-        metadata_file = "output_models/models_metadata.json"
-        with open(metadata_file, 'r') as f:
-            data = json.load(f)
-
-        data[model_id] = metadata
-
-        with open(metadata_file, 'w') as f:
-            json.dump(data, f, indent=4)
-    except Exception as e:
-        print(f"[save_model_metadata] ERROR saving metadata for {model_id}: {type(e).__name__}: {str(e)}")
-        raise
+# ── Supabase helpers (replaces joblib.dump + json file) ──
+from model_storage.database import save_model_to_db
+from model_storage.storage import upload_model
 
 
 # ─────────────────────────────────────────────
@@ -47,7 +30,9 @@ def _evaluate(pipeline, X_test, y_test, is_classification):
         score = accuracy_score(y_test, y_pred)
         metrics = {
             "accuracy":    round(float(score), 4),
-            "f1_weighted": round(float(f1_score(y_test, y_pred, average="weighted", zero_division=0)), 4),
+            "f1_weighted": round(float(f1_score(
+                y_test, y_pred, average="weighted", zero_division=0
+            )), 4),
         }
     else:
         score = r2_score(y_test, y_pred)
@@ -55,8 +40,8 @@ def _evaluate(pipeline, X_test, y_test, is_classification):
         rmse  = float(np.sqrt(mean_squared_error(y_test, y_pred)))
         metrics = {
             "r2":   round(float(score), 4),
-            "mae":  round(float(mae), 4),
-            "rmse": round(float(rmse), 4),
+            "mae":  round(float(mae),   4),
+            "rmse": round(float(rmse),  4),
         }
 
     return float(score), metrics
@@ -69,12 +54,13 @@ def _evaluate(pipeline, X_test, y_test, is_classification):
 def start_model_building(df, target_col, problemTypeB,
                          modelName=None, timeout=300, file_name=None):
     """
-    Always tunes the selected model using focused Optuna search.
-    Removed with_tuning toggle — tuning is always ON for better accuracy.
+    Tunes the selected model using focused Optuna search,
+    uploads .pkl to Supabase Storage,
+    saves metadata to Supabase DB.
     """
 
     try:
-        model_id = str(uuid.uuid4())
+        model_id = str(uuid6.uuid7())
 
         # ── 1. Analyze dataset ─────────────────────
         report = analyze_columns(df, target_col, is_classification=problemTypeB)
@@ -106,14 +92,18 @@ def start_model_building(df, target_col, problemTypeB,
             stratify=y if problemTypeB else None
         )
 
+        # ── 6. Label encode classification targets ─
+        label_encoder = None
         if problemTypeB:
             label_encoder = LabelEncoder()
-            y_train = pd.Series(label_encoder.fit_transform(y_train), index=y_train.index)
-            y_test = pd.Series(label_encoder.transform(y_test), index=y_test.index)
-        else:
-            label_encoder = None
+            y_train = pd.Series(
+                label_encoder.fit_transform(y_train), index=y_train.index
+            )
+            y_test = pd.Series(
+                label_encoder.transform(y_test), index=y_test.index
+            )
 
-        # ── 6. Tune selected model with Optuna ─────
+        # ── 7. Tune selected model with Optuna ─────
         best_pipeline = tune_selected_model(
             preprocessor      = preprocessor,
             X_train           = X_train,
@@ -124,27 +114,35 @@ def start_model_building(df, target_col, problemTypeB,
             timeout           = timeout,
         )
         best_pipeline.fit(X_train, y_train)
-        # Fit the pipeline with best parameters on full training data
-        joblib.dump(best_pipeline, f"output_models/{model_id}.pkl")
 
-        # ── 7. Evaluate ────────────────────────────
+        # ── 8. Upload .pkl → Supabase Storage ──────
+        storage_path = upload_model(best_pipeline, model_id)
+
+        # ── 9. Evaluate ────────────────────────────
         score, metrics = _evaluate(best_pipeline, X_test, y_test, problemTypeB)
 
-        # ── 8. Save metadata ───────────────────────
+        # ── 10. Build metadata dict ────────────────
         metadata = {
-            'File Name':     file_name,
-            'model_id':      model_id,
-            'model_name':    modelName,
-            'problem_type':  'Classification' if problemTypeB else 'Regression',
-            'target_column': target_col,
-            'score':         score,       # primary score (backward compat)
-            'metrics':       metrics,     # all metrics
-            'dataset_shape': list(df.shape),
-            'created_at':    datetime.now().strftime("%Y-%m-%d / %H:%M:%S")
+            "model_id":      model_id,
+            "file_name":     file_name,
+            "model_name":    modelName,
+            "problem_type":  "Classification" if problemTypeB else "Regression",
+            "target_column": target_col,
+            "score":         score,
+            "metrics":       metrics,
+            "dataset_rows":  int(df.shape[0]),
+            "dataset_cols":  int(df.shape[1]),
+            "storage_path":  storage_path,
+            "created_at":    datetime.now().strftime("%Y-%m-%d / %H:%M:%S"),
         }
+
+        # Save target classes if classification
         if label_encoder is not None:
-            metadata['target_classes'] = label_encoder.classes_.tolist()
-        save_model_metadata(model_id, metadata)
+            metadata["target_classes"] = label_encoder.classes_.tolist()
+
+        # ── 11. Save metadata → Supabase DB ────────
+        # Replaces: save_model_metadata(model_id, metadata)
+        save_model_to_db(metadata)
 
         return metadata
 
