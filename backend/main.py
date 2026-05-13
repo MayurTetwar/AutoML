@@ -29,13 +29,27 @@
 # ----------------------------------------------------------------------------------------------------
 
 from fastapi import FastAPI
-from api.routes import models, train
+from fastapi.middleware.cors import CORSMiddleware
+from api.routes import models, train, auth
+app = FastAPI(
+    title="AutoML API",
+    description="Train and serve ML models. All model operations require authentication.",              
+)
 
-app = FastAPI(title="AutoML API")
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # replace "*" with your frontend URL in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+ 
+# --- Routers ---
+from api.routes import models, train, auth
+app.include_router(auth.router) 
 app.include_router(train.router)
 app.include_router(models.router)
 
-@app.get("/")
+@app.get("/", tags=["Health"])
 def health():
     return {"status": "AutoML API is running ✅"}

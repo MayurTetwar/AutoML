@@ -1,0 +1,28 @@
+# python -m venv env (for virtual environment)
+# env\Scripts\activate (activation)
+
+*****************************************************************************************
+# Supabase Dashboard Setup for user auth #
+
+-- Step 1: Add user_id to models table
+ALTER TABLE models ADD COLUMN user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+
+-- Step 2: Enable Row Level Security
+ALTER TABLE models ENABLE ROW LEVEL SECURITY;
+
+-- Step 3: Each user only sees their own models
+CREATE POLICY "user_sees_own_models"
+ON models FOR SELECT
+USING (auth.uid() = user_id);
+
+-- Step 4: Each user can only insert their own models
+CREATE POLICY "user_inserts_own_models"
+ON models FOR INSERT
+WITH CHECK (auth.uid() = user_id);
+
+-- Step 5: Each user can only delete their own models
+CREATE POLICY "user_deletes_own_models"
+ON models FOR DELETE
+USING (auth.uid() = user_id);
+
+*****************************************************************************************

@@ -1,6 +1,6 @@
 import io
 import joblib
-from model_storage.supabase_client import supabase
+from model_storage.supabase_client import supabase_admin
 
 BUCKET_NAME = "models"   # must match the bucket you created in Supabase dashboard
 
@@ -21,7 +21,7 @@ def upload_model(pipeline, model_id: str) -> str:
 
     storage_path = f"models/{model_id}.pkl"
 
-    response = supabase.storage.from_(BUCKET_NAME).upload(
+    response = supabase_admin.storage.from_(BUCKET_NAME).upload(
         path         = storage_path,
         file         = file_bytes,
         file_options = {"content-type": "application/octet-stream"}
@@ -36,7 +36,7 @@ def download_model(storage_path: str):
     Downloads the .pkl bytes from Supabase Storage,
     deserializes with joblib and returns the sklearn pipeline.
     """
-    file_bytes = supabase.storage.from_(BUCKET_NAME).download(storage_path)
+    file_bytes = supabase_admin.storage.from_(BUCKET_NAME).download(storage_path)
 
     buffer = io.BytesIO(file_bytes)
     pipeline = joblib.load(buffer)
@@ -49,6 +49,6 @@ def delete_model_from_storage(storage_path: str):
     """
     Deletes the .pkl file from Supabase Storage bucket.
     """
-    response = supabase.storage.from_(BUCKET_NAME).remove([storage_path])
-    print(f"🗑️ Deleted from Storage: {storage_path}")
+    response = supabase_admin.storage.from_(BUCKET_NAME).remove([storage_path])
+    # print(f"🗑️ Deleted from Storage: {storage_path}")
     return response

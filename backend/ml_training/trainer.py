@@ -52,7 +52,7 @@ def _evaluate(pipeline, X_test, y_test, is_classification):
 # ─────────────────────────────────────────────
 
 def start_model_building(df, target_col, problemTypeB,
-                         modelName=None, timeout=300, file_name=None):
+                         modelName=None, timeout=300, file_name=None, user_id=None):
     """
     Tunes the selected model using focused Optuna search,
     uploads .pkl to Supabase Storage,
@@ -126,6 +126,7 @@ def start_model_building(df, target_col, problemTypeB,
             "model_id":      model_id,
             "file_name":     file_name,
             "model_name":    modelName,
+            "user_id":       user_id,        # ← add this line
             "problem_type":  "Classification" if problemTypeB else "Regression",
             "target_column": target_col,
             "score":         score,

@@ -1,10 +1,14 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 import pandas as pd
 import numpy as np
 
-# ── Supabase helpers (replaces joblib + json file reads) ──
-from model_storage.database import get_all_models, get_model_by_id, delete_model_from_db
+from api.dependencies.auth import get_current_user
+from model_storage.database import (
+    get_all_models,
+    get_model_by_id,
+    delete_model_from_db,
+)
 from model_storage.storage import delete_model_from_storage
 from model_storage.model_cache import model_cache
 
@@ -15,14 +19,13 @@ router = APIRouter(
 
 
 # ─────────────────────────────────────────────
-# HELPERS
+# HELPERS  (unchanged from your original)
 # ─────────────────────────────────────────────
 
 def _get_pipeline(model_id: str, storage_path: str):
     """
     Loads pipeline from in-memory cache.
     On cache miss → downloads from Supabase Storage → stores in cache.
-    Replaces: joblib.load(f"output_models/{model_id}.pkl")
     """
     from model_storage.storage import download_model
 
@@ -32,7 +35,7 @@ def _get_pipeline(model_id: str, storage_path: str):
         print(f"  Cache MISS for {model_id} — downloading from Supabase...")
         pipeline = download_model(storage_path)
         model_cache.set(model_id, pipeline)
-    
+
     return pipeline
 
 
@@ -58,14 +61,19 @@ def serialize(value):
 
 # ─────────────────────────────────────────────
 # 1. GET /models/
-#    Returns all model summaries from Supabase DB
+#    Returns only THIS user's models from Supabase DB
 # ─────────────────────────────────────────────
 
 @router.get("/")
-async def list_models():
-    """Get all available models from Supabase DB."""
+async def list_models(
+    user_id: str = Depends(get_current_user),   # ← protected
+):
+    """
+    Get all models belonging to the logged-in user.
+    Other users' models are never returned.
+    """
     try:
-        models = get_all_models()
+        models = get_all_models(user_id=user_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"DB error: {str(e)}")
 
@@ -75,7 +83,6 @@ async def list_models():
             "models": []
         })
 
-    # Shape the summary the same way your old endpoint did
     summary = [
         {
             "model_id":   m["model_id"],
@@ -95,64 +102,56 @@ async def list_models():
 
 # ─────────────────────────────────────────────
 # 2. GET /models/{model_id}
-#    Returns full metadata from Supabase DB
+#    Returns full metadata — only if owned by this user
 # ─────────────────────────────────────────────
 
 @router.get("/{model_id}")
-async def get_model(model_id: str):
-    """Get full metadata of a specific model from Supabase DB."""
-    try:
-        model = get_model_by_id(model_id)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"DB error: {str(e)}")
-
-    if not model:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Model '{model_id}' not found."
-        )
-
+async def get_model(
+    model_id: str,
+    user_id: str = Depends(get_current_user),   # ← protected
+):
+    """
+    Get full metadata of a specific model.
+    Returns 403 if the model belongs to a different user.
+    """
+    model = get_model_by_id(model_id=model_id, user_id=user_id)
     return JSONResponse(status_code=200, content=model)
 
 
 # ─────────────────────────────────────────────
 # 3. GET /models/{model_id}/features
-#    Returns expected features — pipeline loaded via cache
+#    Returns expected features — only if owned by this user
 # ─────────────────────────────────────────────
 
 @router.get("/{model_id}/features")
-async def get_features_endpoint(model_id: str):
+async def get_features_endpoint(
+    model_id: str,
+    user_id: str = Depends(get_current_user),   # ← protected
+):
     """
     Get list of features this model expects.
     Call this before /predict to know what to send.
-    Pipeline is loaded from cache or Supabase Storage.
+    Returns 403 if the model belongs to a different user.
     """
-    # Get storage_path from DB
-    model = get_model_by_id(model_id)
-    if not model:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Model '{model_id}' not found."
-        )
+    model = get_model_by_id(model_id=model_id, user_id=user_id)
 
-    # Load pipeline (cache-aware)
     pipeline = _get_pipeline(model_id, model["storage_path"])
     features = _get_feature_names(pipeline)
 
-    # Map transformer name → human-readable type (same as your original)
+    # Map transformer name → human-readable type (your original logic)
     feature_info = {}
     try:
         preprocessor = pipeline.named_steps['preprocessor']
         for name, transformer, cols in preprocessor.transformers_:
             for col in cols:
-                if name == "num":       feature_info[col] = "float"
-                elif name == "num_log": feature_info[col] = "float"
-                elif name == "cat_low": feature_info[col] = "string"
-                elif name == "cat_high":feature_info[col] = "string"
-                elif name == "binary":  feature_info[col] = "int (0 or 1)"
-                elif name == "bool":    feature_info[col] = "boolean"
-                elif name == "datetime":feature_info[col] = "string (date)"
-                elif name == "ordinal": feature_info[col] = "int"
+                if name == "num":        feature_info[col] = "float"
+                elif name == "num_log":  feature_info[col] = "float"
+                elif name == "cat_low":  feature_info[col] = "string"
+                elif name == "cat_high": feature_info[col] = "string"
+                elif name == "binary":   feature_info[col] = "int (0 or 1)"
+                elif name == "bool":     feature_info[col] = "boolean"
+                elif name == "datetime": feature_info[col] = "string (date)"
+                elif name == "ordinal":  feature_info[col] = "int"
     except Exception:
         feature_info = {f: "any" for f in features}
 
@@ -166,23 +165,22 @@ async def get_features_endpoint(model_id: str):
 
 # ─────────────────────────────────────────────
 # 4. POST /models/{model_id}/predict
-#    Prediction — pipeline loaded via cache
+#    Prediction — only if owned by this user
 # ─────────────────────────────────────────────
 
 @router.post("/{model_id}/predict")
-async def predict(model_id: str, input_data: dict):
+async def predict(
+    model_id: str,
+    input_data: dict,
+    user_id: str = Depends(get_current_user),   # ← protected
+):
     """
     Generic prediction endpoint — works for ANY trained model.
     Call /models/{model_id}/features first to see what to send.
-    Pipeline is served from in-memory cache after first call.
+    Returns 403 if the model belongs to a different user.
     """
-    # 1. Get storage_path from Supabase DB
-    model = get_model_by_id(model_id)
-    if not model:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Model '{model_id}' not found."
-        )
+    # 1. Ownership check — raises 404 or 403 if needed
+    model = get_model_by_id(model_id=model_id, user_id=user_id)
 
     # 2. Load pipeline — cache hit = instant, miss = download from Supabase
     pipeline = _get_pipeline(model_id, model["storage_path"])
@@ -220,7 +218,7 @@ async def predict(model_id: str, input_data: dict):
             detail=f"Prediction failed: {str(e)}"
         )
 
-    # 7. Build response — same structure as your original
+    # 7. Build response (your original structure, fully preserved)
     result = {
         "model_id":   model_id,
         "prediction": serialize(prediction[0]),
@@ -248,25 +246,25 @@ async def predict(model_id: str, input_data: dict):
 # ─────────────────────────────────────────────
 # 5. DELETE /models/{model_id}
 #    Deletes from Supabase Storage + DB + cache
+#    Only if owned by this user
 # ─────────────────────────────────────────────
 
 @router.delete("/{model_id}")
-async def delete_model(model_id: str):
+async def delete_model(
+    model_id: str,
+    user_id: str = Depends(get_current_user),   # ← protected
+):
     """
     Delete a trained model permanently.
     Removes .pkl from Supabase Storage, metadata from DB, and cache entry.
+    Returns 403 if the model belongs to a different user.
     """
-    # 1. Get model from DB
-    model = get_model_by_id(model_id)
-    if not model:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Model '{model_id}' not found."
-        )
+    # 1. Get model + ownership check
+    model = get_model_by_id(model_id=model_id, user_id=user_id)
 
-    model_name    = model.get("model_name", "Unknown")
-    problem_type  = model.get("problem_type", "Unknown")
-    storage_path  = model.get("storage_path")
+    model_name   = model.get("model_name", "Unknown")
+    problem_type = model.get("problem_type", "Unknown")
+    storage_path = model.get("storage_path")
 
     # 2. Delete .pkl from Supabase Storage
     if storage_path:
@@ -280,14 +278,14 @@ async def delete_model(model_id: str):
 
     # 3. Delete metadata row from Supabase DB
     try:
-        delete_model_from_db(model_id)
+        delete_model_from_db(model_id=model_id, user_id=user_id)
     except Exception as e:
         raise HTTPException(
             status_code=500,
             detail=f"Failed to delete model metadata from DB: {str(e)}"
         )
 
-    # 4. Evict from in-memory cache
+    # 4. Remove from in-memory cache
     model_cache.invalidate(model_id)
 
     return JSONResponse(status_code=200, content={
@@ -301,7 +299,7 @@ async def delete_model(model_id: str):
 
 
 # ─────────────────────────────────────────────
-# 6. GET /models/cache/stats  (debug endpoint)
+# 6. GET /models/cache/stats  (debug — no auth needed)
 #    Shows what's currently in the in-memory cache
 # ─────────────────────────────────────────────
 
@@ -310,6 +308,6 @@ async def cache_stats():
     """
     Debug endpoint — shows which models are currently
     in memory, their age, and when they expire.
-    Hit this in your browser to verify caching is working.
+    No auth required — does not expose any user data.
     """
     return JSONResponse(status_code=200, content=model_cache.stats())
