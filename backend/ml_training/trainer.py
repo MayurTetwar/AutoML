@@ -1,7 +1,9 @@
 from datetime import datetime
+from fastapi import HTTPException
 import uuid6
 import numpy as np
 import pandas as pd
+import logging
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
@@ -13,9 +15,11 @@ from .preprocessor import auto_drop_columns, decide_preprocessing
 from .pipeline_builder import build_pipeline
 from .tuner import tune_selected_model
 
+logger = logging.getLogger(__name__)
+
 # ── Supabase helpers (replaces joblib.dump + json file) ──
-from model_storage.database import save_model_to_db
-from model_storage.storage import upload_model
+from storage.model_database import save_model_to_db
+from storage.model_storage import upload_model
 
 
 # ─────────────────────────────────────────────
@@ -58,6 +62,7 @@ def start_model_building(df, target_col, problemTypeB,
     uploads .pkl to Supabase Storage,
     saves metadata to Supabase DB.
     """
+    logger.info("Starting model building for user_id: %s, model: %s, target: %s", user_id, modelName, target_col)
 
     try:
         model_id = str(uuid6.uuid7())
@@ -145,8 +150,8 @@ def start_model_building(df, target_col, problemTypeB,
         # Replaces: save_model_metadata(model_id, metadata)
         save_model_to_db(metadata)
 
+        logger.info("Model building completed successfully for model_id: %s", model_id)
         return metadata
 
     except Exception as e:
-        print(f"[start_model_building] FATAL ERROR: {type(e).__name__}: {str(e)}")
-        raise
+            raise HTTPException(status_code=500, detail=f"Model building failed: {str(e)}")

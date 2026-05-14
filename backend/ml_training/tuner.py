@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore", message="X does not have valid feature names",
 def _get_single_classifier(trial, model_name, weight):
     """Returns a classifier with tunable params for the selected model only."""
 
-    n_jobs = -1 if model_name in ['Random Forest', 'LightGBM', 'XGBoost'] else 1
+    n_jobs = 2
     if model_name == "Logistic Regression":
         from sklearn.linear_model import LogisticRegression
         return LogisticRegression(
@@ -102,7 +102,7 @@ def _get_single_classifier(trial, model_name, weight):
 def _get_single_regressor(trial, model_name):
     """Returns a regressor with tunable params for the selected model only."""
 
-    n_jobs = -1 if model_name in ['Random Forest', 'LightGBM', 'XGBoost'] else 1
+    n_jobs = 2
     if model_name == "ElasticNet":
         from sklearn.linear_model import ElasticNet
         return ElasticNet(
