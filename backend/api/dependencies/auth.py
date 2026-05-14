@@ -1,6 +1,6 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from model_storage.supabase_client import supabase
+from storage.supabase_client import supabase
 
 # This reads the "Authorization: Bearer <token>" header automatically
 bearer_scheme = HTTPBearer()

@@ -2,15 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 import pandas as pd
 import numpy as np
+import logging
 
 from api.dependencies.auth import get_current_user
-from model_storage.database import (
+from storage.model_database import (
     get_all_models,
     get_model_by_id,
     delete_model_from_db,
 )
-from model_storage.storage import delete_model_from_storage
-from model_storage.model_cache import model_cache
+from storage.model_storage import delete_model_from_storage
+from storage.model_cache import model_cache
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/models",
@@ -27,7 +30,7 @@ def _get_pipeline(model_id: str, storage_path: str):
     Loads pipeline from in-memory cache.
     On cache miss → downloads from Supabase Storage → stores in cache.
     """
-    from model_storage.storage import download_model
+    from storage.model_storage import download_model
 
     pipeline = model_cache.get(model_id)
 
@@ -72,6 +75,7 @@ async def list_models(
     Get all models belonging to the logged-in user.
     Other users' models are never returned.
     """
+    logger.info("Listing models for user_id: %s", user_id)
     try:
         models = get_all_models(user_id=user_id)
     except Exception as e:
@@ -179,6 +183,7 @@ async def predict(
     Call /models/{model_id}/features first to see what to send.
     Returns 403 if the model belongs to a different user.
     """
+    logger.info("Prediction request for model_id: %s by user_id: %s", model_id, user_id)
     # 1. Ownership check — raises 404 or 403 if needed
     model = get_model_by_id(model_id=model_id, user_id=user_id)
 

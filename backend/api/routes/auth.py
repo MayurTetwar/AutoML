@@ -1,26 +1,37 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
-from model_storage.supabase_client import supabase, supabase_admin
-from model_storage.database import get_all_models
-from model_storage.storage import delete_model_from_storage
-from model_storage.model_cache import model_cache
+import logging
+from storage.supabase_client import supabase, supabase_admin
+from storage.model_database import get_all_models
+from storage.model_storage import delete_model_from_storage
+from storage.model_cache import model_cache
 from api.dependencies.auth import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+
 # ---------- Request schemas ----------
+
 class AuthRequest(BaseModel):
     email: EmailStr
     password: str
 
-# ---------- Response schemas ----------
-class AuthResponse(BaseModel):
-    message: str
-    access_token: str        # User stores this and sends it in every future request
-    token_type: str = "bearer"
-    user_id: str
 
-# ---------- Endpoints ----------
+# ---------- Response schemas ----------
+
+class AuthResponse(BaseModel):
+    message:      str
+    access_token: str        # user stores this and sends in every future request
+    token_type:   str = "bearer"
+    user_id:      str
+
+
+# ─────────────────────────────────────────────
+# 1. POST /auth/signup
+# ─────────────────────────────────────────────
+
 @router.post(
     "/signup",
     response_model=AuthResponse,
@@ -30,14 +41,9 @@ class AuthResponse(BaseModel):
 async def signup(body: AuthRequest):
     """
     Creates a new user account.
+    Returns a JWT access_token the user must send in all future requests.
     """
-    #  Returns a JWT access_token the user must send in all future requests.
-
-    # Request body:
-    #     { "email": "user@example.com", "password": "yourpassword" }
-
-    # Response:
-    #     { "access_token": "eyJ...", "user_id": "uuid-...", ... }
+    logger.info("Signup attempt for email: %s", body.email)
     try:
         response = supabase.auth.sign_up(
             {"email": body.email, "password": body.password}
@@ -50,9 +56,9 @@ async def signup(body: AuthRequest):
             )
 
         return AuthResponse(
-            message="Account created successfully. You can now log in.",
-            access_token=response.session.access_token,
-            user_id=str(response.user.id),
+            message      = "Account created successfully. You can now log in.",
+            access_token = response.session.access_token,
+            user_id      = str(response.user.id),
         )
 
     except HTTPException:
@@ -64,6 +70,10 @@ async def signup(body: AuthRequest):
         )
 
 
+# ─────────────────────────────────────────────
+# 2. POST /auth/login
+# ─────────────────────────────────────────────
+
 @router.post(
     "/login",
     response_model=AuthResponse,
@@ -73,30 +83,26 @@ async def signup(body: AuthRequest):
 async def login(body: AuthRequest):
     """
     Logs in an existing user.
+    Returns a JWT access_token — send this in all future requests as:
+    Authorization: Bearer <access_token>
     """
-    #  Returns a JWT access_token the user must send in all future requests
-    # as: Authorization: Bearer <access_token>
-
-    # Request body:
-    #     { "email": "user@example.com", "password": "yourpassword" }
-
-    # Response:
-    #     { "access_token": "eyJ...", "user_id": "uuid-...", ... }
+    logger.info("Login attempt for email: %s", body.email)
     try:
         response = supabase.auth.sign_in_with_password(
             {"email": body.email, "password": body.password}
         )
 
         if response.user is None or response.session is None:
+            logger.warning("Failed login for email: %s", body.email)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password.",
             )
 
         return AuthResponse(
-            message="Login successful.",
-            access_token=response.session.access_token,
-            user_id=str(response.user.id),
+            message      = "Login successful.",
+            access_token = response.session.access_token,
+            user_id      = str(response.user.id),
         )
 
     except HTTPException:
@@ -108,6 +114,10 @@ async def login(body: AuthRequest):
         )
 
 
+# ─────────────────────────────────────────────
+# 3. POST /auth/logout
+# ─────────────────────────────────────────────
+
 @router.post(
     "/logout",
     status_code=status.HTTP_200_OK,
@@ -116,7 +126,7 @@ async def login(body: AuthRequest):
 async def logout():
     """
     Logs out the current session from Supabase.
-    After this the token is invalidated.
+    Token expires naturally after 1 hour.
     """
     try:
         supabase.auth.sign_out()
@@ -128,28 +138,33 @@ async def logout():
         )
 
 
+# ─────────────────────────────────────────────
+# 4. DELETE /auth/delete-account
+# ─────────────────────────────────────────────
+
 @router.delete(
     "/delete-account",
     status_code=status.HTTP_200_OK,
     summary="Permanently delete the logged-in user's account and all their models",
 )
 async def delete_account(
-    user_id: str = Depends(get_current_user),   # ← must be logged in
+    user_id: str = Depends(get_current_user),
 ):
     """
     Permanently deletes the calling user's account.
+
+    Order of operations:
+      1. Fetch all models belonging to this user
+      2. Delete each model's .pkl file from Supabase Storage  (admin client)
+      3. Delete each model's metadata row from DB             (admin client)
+      4. Evict each model from in-memory cache
+      5. Delete all training job records for this user
+      6. Delete the user account from Supabase Auth           (admin client)
+
+    This action cannot be undone.
     """
-    # What this does in order:
-    #   1. Fetches all models belonging to this user
-    #   2. Deletes each model's .pkl file from Supabase Storage
-    #   3. Deletes each model's metadata row from the DB
-    #   4. Evicts each model from the in-memory cache
-    #   5. Deletes the user account from Supabase Auth
 
-    # After this call the token is invalid and the account is gone.
-    # This action cannot be undone.
-
-    # ── Step 1: fetch all models owned by this user ──
+    # ── Step 1: fetch all models ──
     try:
         models = get_all_models(user_id=user_id)
     except Exception as e:
@@ -167,39 +182,47 @@ async def delete_account(
         storage_path = model.get("storage_path")
 
         try:
-            # Delete .pkl from Supabase Storage
-            print(storage_path)
+            # Delete .pkl from Supabase Storage — uses admin client to bypass RLS
             if storage_path:
                 delete_model_from_storage(storage_path)
 
-            # Delete metadata row from DB
+            # Delete metadata row from DB — uses admin client to bypass RLS
             supabase_admin.table("models")\
                 .delete()\
                 .eq("model_id", model_id)\
                 .eq("user_id", user_id)\
                 .execute()
 
-            # Evict from memory cache
+            # Evict from in-memory cache
             model_cache.invalidate(model_id)
 
             deleted_models.append(model_id)
 
         except Exception as e:
-            # Don't stop — try to clean up remaining models
+            # Don't stop — keep cleaning up remaining models
             failed_models.append({"model_id": model_id, "error": str(e)})
 
-    # ── Step 5: delete user from Supabase Auth ──
-    # This requires the Supabase service role key (admin client)
-    # The regular anon client cannot delete auth users
+    # ── Step 5: delete all training job records ──
+    # Must be done before deleting the user from auth
     try:
-        # print(user_id)
+        supabase_admin.table("training_jobs")\
+            .delete()\
+            .eq("user_id", user_id)\
+            .execute()
+    except Exception as e:
+        # Non-fatal — log and continue
+        print(f"Warning: could not delete training jobs for {user_id}: {str(e)}")
+
+    # ── Step 6: delete user from Supabase Auth ──
+    # Only supabase_admin (service role key) can do this
+    try:
         supabase_admin.auth.admin.delete_user(user_id)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=(
                 f"Models were cleaned up but user account deletion failed: {str(e)}. "
-                "Ensure your Supabase client is initialized with the SERVICE ROLE key."
+                "Ensure supabase_admin is initialized with the SERVICE ROLE key."
             ),
         )
 
@@ -207,5 +230,5 @@ async def delete_account(
         "message":        "Account and all associated models deleted successfully.",
         "user_id":        user_id,
         "models_deleted": deleted_models,
-        "models_failed":  failed_models,   # empty list if all cleaned up fine
+        "models_failed":  failed_models,
     }
