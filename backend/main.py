@@ -1,4 +1,4 @@
-# Main ML pipline for training and testing the model
+# Main ML pipeline for training and testing the model
 
 # import joblib
 # import pandas as pd
@@ -28,6 +28,41 @@
 
 # ----------------------------------------------------------------------------------------------------
 
+import logging
+import json
+from datetime import datetime
+
+# Custom JSON formatter for structured logging
+class JSONFormatter(logging.Formatter):
+    def format(self, record):
+        log_entry = {
+            "time": datetime.utcnow().isoformat() + "Z",
+            "level": record.levelname,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno
+        }
+        if record.exc_info:
+            log_entry["exception"] = self.formatException(record.exc_info)
+        return json.dumps(log_entry)
+
+logging.basicConfig(
+    level=logging.INFO,
+    handlers=[
+        # logging.StreamHandler(),  # Console output
+        logging.FileHandler('app.log')  # File output
+    ]
+)
+
+# I allow to use only 1 handler of app.log and comment out console output
+for handler in logging.getLogger().handlers:
+    handler.setFormatter(JSONFormatter())
+
+logger = logging.getLogger(__name__)
+
+#--------------------------------------------------------------------------------------------------
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.routes import models, train, auth
@@ -52,4 +87,5 @@ app.include_router(models.router)
 
 @app.get("/", tags=["Health"])
 def health():
+    logger.info("Health check endpoint accessed")
     return {"status": "AutoML API is running ✅"}

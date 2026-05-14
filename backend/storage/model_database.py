@@ -1,4 +1,4 @@
-from model_storage.supabase_client import supabase_admin, supabase
+from storage.supabase_client import supabase_admin, supabase
 from fastapi import HTTPException, status
 
 
@@ -94,6 +94,12 @@ def delete_model_from_db(model_id: str, user_id: str) -> bool:
     Deletes a model's metadata row from the DB.
     Ownership is already verified by get_model_by_id before this is called.
     """
+    supabase_admin.table("training_jobs")\
+        .delete()\
+        .eq("model_id", model_id)\
+        .eq("user_id", user_id)\
+        .execute()
+
     supabase_admin.table("models")\
         .delete()\
         .eq("model_id", model_id)\

@@ -1,6 +1,6 @@
 import io
 import joblib
-from model_storage.supabase_client import supabase_admin
+from storage.supabase_client import supabase_admin
 
 BUCKET_NAME = "models"   # must match the bucket you created in Supabase dashboard
 
