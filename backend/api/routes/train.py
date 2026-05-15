@@ -8,7 +8,6 @@ import io
 
 from storage.jobs_database import (
     create_job,
-    update_job_status,
     get_job,
     get_all_jobs_by_user,
 )

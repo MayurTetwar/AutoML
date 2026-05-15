@@ -26,3 +26,9 @@ ON models FOR DELETE
 USING (auth.uid() = user_id);
 
 *****************************************************************************************
+
+My deployed backend:-  
+https://modal.com/apps/mayurtetwar123/main/deployed/automl-api
+
+Webiste:- 
+https://mayurtetwar123--automl-api-fastapi-app.modal.run/
