@@ -71,7 +71,7 @@ def get_model_by_id(model_id: str, user_id: str) -> dict:
     )
 
     # .maybe_single() puts the row directly in response.data (not a list)
-    if not response.data:
+    if response is None or response.data is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Model '{model_id}' not found.",

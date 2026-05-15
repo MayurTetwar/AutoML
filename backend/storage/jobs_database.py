@@ -59,15 +59,21 @@ def get_job(job_id: str, user_id: str) -> dict:
     Returns a single job.
     Filters by user_id so users can only see their own jobs.
     """
-    response = (
-        supabase.table(TABLE)
-        .select("*")
-        .eq("job_id", job_id)
-        .eq("user_id", user_id)
-        .maybe_single()
-        .execute()
-    )
-    return response.data or None
+    try:
+        response = (
+            supabase.table(TABLE)
+            .select("*")
+            .eq("job_id", job_id)
+            .eq("user_id", user_id)
+            .maybe_single()
+            .execute()
+        )
+        # .maybe_single() returns None in response when not found
+        if response is None or response.data is None:
+            return None
+        return response.data
+    except Exception:
+        return None
 
 
 def get_all_jobs_by_user(user_id: str) -> list:
