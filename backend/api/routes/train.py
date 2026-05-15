@@ -1,21 +1,17 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from fastapi.responses import JSONResponse
 from api.dependencies.auth import get_current_user
 from typing import Annotated
 import pandas as pd
 import uuid
 import io
-import logging
 
-from ml_training.trainer import start_model_building
 from storage.jobs_database import (
     create_job,
     update_job_status,
     get_job,
     get_all_jobs_by_user,
 )
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/train",
@@ -27,81 +23,27 @@ regression_models     = ["ElasticNet", "Random Forest", "XGBoost", "LightGBM", "
 
 
 # ─────────────────────────────────────────────
-# BACKGROUND TRAINING FUNCTION
-# Runs after endpoint already returned job_id to user
-# ─────────────────────────────────────────────
-
-def _run_training_in_background(
-    job_id:       str,
-    user_id:      str,
-    df:           pd.DataFrame,
-    target_col:   str,
-    problem_type: bool,
-    model_name:   str,
-    timeout:      int,
-    file_name:    str,
-):
-    logger.info("Starting background training for job_id: %s, user_id: %s, model: %s", job_id, user_id, model_name)
-    try:
-        # Mark job as running
-        update_job_status(job_id=job_id, status="running")
-
-        # Run full ML pipeline — exact same call as your original
-        result = start_model_building(
-            df           = df,
-            target_col   = target_col,
-            problemTypeB = problem_type,
-            modelName    = model_name,
-            timeout      = timeout,
-            file_name    = file_name,
-            user_id      = user_id,
-        )
-
-        # Mark job as completed
-        update_job_status(
-            job_id   = job_id,
-            status   = "completed",
-            model_id = result["model_id"],
-        )
-        logger.info("Training completed successfully for job_id: %s, model_id: %s", job_id, result["model_id"])
-
-    except Exception as e:
-        logger.error("Training failed for job_id: %s, error: %s", job_id, str(e))
-        # Mark job as failed — store the error message
-        update_job_status(
-            job_id = job_id,
-            status = "failed",
-            error  = str(e),
-        )
-
-
-# ─────────────────────────────────────────────
 # 1. POST /train/
-#    Returns job_id immediately — no more 2 min wait
+#    Spawns Modal training job — returns job_id instantly
 # ─────────────────────────────────────────────
 
 @router.post("/", status_code=202)
 async def train(
-    background_tasks:            BackgroundTasks,
     file:                        Annotated[UploadFile, File(..., description="CSV or Excel dataset")],
     target_column:               Annotated[str,  Form(..., description="Target column name")],
     problem_type_classification: Annotated[bool, Form(..., description="True = Classification, False = Regression")],
-    timeout:                     Annotated[int,  Form(..., ge=60, description="Tuning timeout in seconds (minimum: 60 Sec)")],
-    model_name:                  Annotated[str,  Form(..., description=f"Model name — Classification: {classification_models} | Regression: {regression_models})")],
+    timeout:                     Annotated[int,  Form(..., ge=60, description="Tuning timeout in seconds (minimum: 60)")],
+    model_name:                  Annotated[str,  Form(..., description=f"Classification: {classification_models} | Regression: {regression_models}")],
     user_id: str = Depends(get_current_user),
 ):
-    logger.info(f"[TRAIN REQUEST] user_id={user_id}, file={file.filename}, model={model_name}, target={target_column}")
     """
-    Starts training in background and returns job_id immediately.
+    Starts training on Modal infrastructure and returns job_id immediately.
+    Training runs on a separate Modal container with 16GB RAM.
     Use GET /train/status/{job_id} to track progress.
-
-    Status flow:
-        pending → running → completed (or failed)
     """
 
     # ── Validate file type ──
     if not file.filename.endswith(('.csv', '.xlsx', '.xls')):
-        logger.warning("Invalid file type uploaded by user_id: %s, filename: %s", user_id, file.filename)
         raise HTTPException(
             status_code=400,
             detail="Only .csv or .xlsx files are allowed."
@@ -142,13 +84,19 @@ async def train(
         model_name = model_name,
     )
 
-    # ── Start training in background ──
-    # Returns immediately after this line — user gets job_id right away
-    background_tasks.add_task(
-        _run_training_in_background,
+    # ── Serialize DataFrame to JSON for Modal ──
+    # Modal runs in a separate container so we can't pass DataFrame directly
+    # JSON string is the cleanest way to transfer tabular data
+    df_json = df.to_json()
+
+    # ── Spawn Modal training job ──
+    # .spawn() returns immediately — training runs on Modal's infrastructure
+    # No waiting, no blocking, user gets job_id right away
+    from modal_app import run_training
+    await run_training.spawn.aio(
         job_id       = job_id,
         user_id      = user_id,
-        df           = df,
+        df_json      = df_json,
         target_col   = target_column,
         problem_type = problem_type_classification,
         model_name   = model_name,
@@ -156,11 +104,10 @@ async def train(
         file_name    = file.filename,
     )
 
-    # ── Return job_id immediately ──
     return JSONResponse(
         status_code = 202,
         content     = {
-            "message":    "Training started successfully. Poll status endpoint to track progress.",
+            "message":    "Training started on Modal. Poll status endpoint to track progress.",
             "job_id":     job_id,
             "model_name": model_name,
             "status":     "pending",
@@ -171,7 +118,7 @@ async def train(
 
 # ─────────────────────────────────────────────
 # 2. GET /train/status/{job_id}
-#    Poll this to check training progress
+#    Poll this to check Modal training progress
 # ─────────────────────────────────────────────
 
 @router.get("/status/{job_id}", status_code=200)
@@ -183,18 +130,20 @@ async def get_training_status(
     Poll this after POST /train/ to track training progress.
 
     Status values:
-        pending   → job created, about to start
-        running   → training in progress
+        pending   → job created, Modal container starting
+        running   → training in progress on Modal
         completed → training done, model_id is ready
         failed    → training failed, check error field
     """
     job = get_job(job_id=job_id, user_id=user_id)
 
     if not job:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Job '{job_id}' not found."
-        )
+        # Job deleted = training completed and cleaned up
+        return JSONResponse(status_code=200, content={
+            "job_id":  job_id,
+            "status":  "completed",
+            "message": "Training completed. Check GET /models/ for your model.",
+        })
 
     response = {
         "job_id":     job["job_id"],
@@ -226,7 +175,6 @@ async def list_training_jobs(
 ):
     """
     Returns all training jobs for the logged-in user, newest first.
-    Shows pending, running, completed and failed jobs.
     """
     jobs = get_all_jobs_by_user(user_id=user_id)
 
