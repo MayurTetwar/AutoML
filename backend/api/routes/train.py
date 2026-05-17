@@ -6,10 +6,12 @@ import pandas as pd
 import uuid
 import io
 
+from ml_training.trainer import start_auto_model_building
 from storage.jobs_database import (
     create_job,
     get_job,
     get_all_jobs_by_user,
+    update_job_status,
 )
 
 router = APIRouter(
@@ -114,9 +116,119 @@ async def train(
         }
     )
 
+# ─────────────────────────────────────────────
+# 2. GET /train/auto/
+#    Spawns Modal (with auto selection of ML model) training job — returns job_id instantly
+# ─────────────────────────────────────────────
+
+@router.post("/auto", status_code=202)
+async def train_auto(
+    file:                        Annotated[UploadFile, File(..., description="CSV or Excel dataset")],
+    target_column:               Annotated[str,  Form(..., description="Target column name")],
+    problem_type_classification: Annotated[bool, Form(..., description="True = Classification, False = Regression")],
+    timeout:                     Annotated[int,  Form(..., ge=60, description="Tuning timeout in seconds (minimum: 60). Recommended: 300+ for auto mode")],
+    user_id: str = Depends(get_current_user),
+):
+    """
+    AUTO mode — Optuna automatically selects the best model AND tunes hyperparameters.
+    No model_name required — Optuna tries all models and picks the winner.
+ 
+    Models tried for Classification:
+        Logistic Regression, Ridge Classifier, Random Forest, XGBoost, LightGBM, KNN
+ 
+    Models tried for Regression:
+        ElasticNet, Random Forest, XGBoost, LightGBM, KNN
+ 
+    Recommended timeout: 300+ seconds so Optuna has enough time to try all models.
+    Returns job_id immediately — poll GET /train/status/{job_id} to track progress.
+    """
+ 
+    # ── Validate file ──
+    if not file.filename.endswith(('.csv', '.xlsx', '.xls')):
+        raise HTTPException(
+            status_code=400,
+            detail="Only .csv or .xlsx files are allowed."
+        )
+ 
+    # ── Read file ──
+    try:
+        contents = await file.read()
+        if file.filename.endswith('.csv'):
+            df = pd.read_csv(io.BytesIO(contents), encoding='unicode_escape')
+        else:
+            df = pd.read_excel(io.BytesIO(contents))
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Could not read file: {str(e)}"
+        )
+ 
+    # ── Validate target column ──
+    if target_column not in df.columns:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Target column '{target_column}' not found. Available: {list(df.columns)}"
+        )
+ 
+    # ── Minimum row check ──
+    if len(df) < 100:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Dataset too small ({len(df)} rows). Minimum 100 rows required."
+        )
+ 
+    # ── Create job record ──
+    job_id = str(uuid.uuid4())
+    create_job(
+        job_id     = job_id,
+        user_id    = user_id,
+        model_name = "Auto (Optuna selecting...)",  # placeholder until done
+    )
+ 
+    # ── Serialize DataFrame ──
+    df_json = df.to_json()
+ 
+    # ── Spawn Modal auto training job ──
+    from modal_app import run_auto_training
+    await run_auto_training.spawn.aio(
+        job_id       = job_id,
+        user_id      = user_id,
+        df_json      = df_json,
+        target_col   = target_column,
+        problem_type = problem_type_classification,
+        timeout      = timeout,
+        file_name    = file.filename,
+    )
+    
+    # Testing code
+    # update_job_status(job_id=job_id, status="running")
+    # result = start_auto_model_building(
+    #     df           = df,
+    #     target_col   = target_column,
+    #     problemTypeB = problem_type_classification,
+    #     timeout      = timeout,
+    #     file_name    = file.filename,
+    #     user_id      = user_id,
+    # )
+    # update_job_status(
+    #     job_id   = job_id,
+    #     status   = "completed",
+    #     model_id = result["model_id"],
+    # )
+ 
+    return JSONResponse(
+        status_code = 202,
+        content     = {
+            "message":    "Auto training started. Optuna will select the best model automatically.",
+            "job_id":     job_id,
+            "model_name": "Auto — Optuna selecting best model",
+            "status":     "pending",
+            "track_url":  f"/train/status/{job_id}",
+        }
+    )
 
 # ─────────────────────────────────────────────
-# 2. GET /train/status/{job_id}
+# 3. GET /train/status/{job_id}
 #    Poll this to check Modal training progress
 # ─────────────────────────────────────────────
 
@@ -164,7 +276,7 @@ async def get_training_status(
 
 
 # ─────────────────────────────────────────────
-# 3. GET /train/jobs
+# 4. GET /train/jobs
 #    List all training jobs for this user
 # ─────────────────────────────────────────────
 

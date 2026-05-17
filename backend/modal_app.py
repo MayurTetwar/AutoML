@@ -1,4 +1,7 @@
 import modal
+import pandas as pd
+from storage.jobs_database import update_job_status
+from ml_training.trainer import start_model_building, start_auto_model_building
 
 # ─────────────────────────────────────────────
 # IMAGE
@@ -80,10 +83,6 @@ def run_training(
     timeout:      int,
     file_name:    str,
 ):
-    import pandas as pd
-    from storage.jobs_database import update_job_status
-    from ml_training.trainer import start_model_building
-
     try:
         df = pd.read_json(df_json)
 
@@ -105,6 +104,55 @@ def run_training(
             model_id = result["model_id"],
         )
 
+    except Exception as e:
+        update_job_status(
+            job_id = job_id,
+            status = "failed",
+            error  = str(e),
+        )
+        raise
+
+@app.function(
+    secrets = secrets,
+    cpu     = 4,
+    memory  = 16384,    # 16GB RAM — auto mode tries more models, needs more memory
+    timeout = 7200,     # 2 hours — auto mode needs more time than single model
+)
+def run_auto_training(
+    job_id:       str,
+    user_id:      str,
+    df_json:      str,
+    target_col:   str,
+    problem_type: bool,
+    timeout:      int,
+    file_name:    str,
+):
+    """
+    Runs auto ML training on Modal infrastructure.
+    Optuna selects the best model AND tunes hyperparameters.
+    No model_name parameter — Optuna decides everything.
+    """
+ 
+    try:
+        df = pd.read_json(df_json)
+ 
+        update_job_status(job_id=job_id, status="running")
+ 
+        result = start_auto_model_building(
+            df           = df,
+            target_col   = target_col,
+            problemTypeB = problem_type,
+            timeout      = timeout,
+            file_name    = file_name,
+            user_id      = user_id,
+        )
+ 
+        update_job_status(
+            job_id   = job_id,
+            status   = "completed",
+            model_id = result["model_id"],
+        )
+ 
     except Exception as e:
         update_job_status(
             job_id = job_id,
