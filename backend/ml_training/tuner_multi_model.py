@@ -217,12 +217,19 @@ def tune_auto_select_model(
         ]
         model_list = classifier_models if is_classification else regressor_models
 
+        MAX_TUNE_SAMPLES = min(len(X_train), 10000)
+        if len(X_train) > 100000:
+            MAX_TUNE_SAMPLES = 15000
+        elif len(X_train) > 50000:
+            MAX_TUNE_SAMPLES = 12000
+        else:
+            MAX_TUNE_SAMPLES = 10000
         # ── Sample large datasets ──
         if is_classification:
-            if len(X_train) > 10000:
+            if len(X_train) > 50000:
                 X_tune, _, y_tune, _ = train_test_split(
                     X_train, y_train,
-                    train_size=10000, random_state=42, stratify=y_train
+                    train_size=MAX_TUNE_SAMPLES, random_state=42, stratify=y_train
                 )
             else:
                 X_tune, y_tune = X_train, y_train
@@ -231,10 +238,10 @@ def tune_auto_select_model(
             scoring     = "f1_weighted"
 
         else:
-            if len(X_train) > 10000:
+            if len(X_train) > 50000:
                 X_tune, _, y_tune, _ = train_test_split(
                     X_train, y_train,
-                    train_size=10000, random_state=42
+                    train_size=MAX_TUNE_SAMPLES, random_state=42
                 )
             else:
                 X_tune, y_tune = X_train, y_train

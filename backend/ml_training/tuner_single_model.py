@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore", message="Objective did not converge", category
 warnings.filterwarnings("ignore", message="The max_iter was reached", category=UserWarning)
 warnings.filterwarnings("ignore", message="X does not have valid feature names", category=UserWarning)
 
-def _get_single_classifier(trial, model_name, weight):
+def _build_classifier(trial, model_name, weight):
     """Returns a classifier with tunable params for the selected model only."""
 
     n_jobs = 2
@@ -99,7 +99,7 @@ def _get_single_classifier(trial, model_name, weight):
     raise ValueError(f"Unknown classifier: {model_name}")
 
 
-def _get_single_regressor(trial, model_name):
+def _build_regressor(trial, model_name):
     """Returns a regressor with tunable params for the selected model only."""
 
     n_jobs = 2
@@ -188,12 +188,19 @@ def tune_selected_model(preprocessor, X_train, y_train,
     try:
         weight = "balanced" if (is_classification and use_balanced) else None
 
-        # Sample large datasets for faster tuning search
+        MAX_TUNE_SAMPLES = min(len(X_train), 10000)
+        if len(X_train) > 100000:
+            MAX_TUNE_SAMPLES = 15000
+        elif len(X_train) > 50000:
+            MAX_TUNE_SAMPLES = 12000
+        else:
+            MAX_TUNE_SAMPLES = 10000
+
         if is_classification:
-            if len(X_train) > 10000:
+            if len(X_train) > 50000:
                 X_tune, _, y_tune, _ = train_test_split(
                     X_train, y_train,
-                    train_size=10000, random_state=42, stratify=y_train
+                    train_size=MAX_TUNE_SAMPLES, random_state=42, stratify=y_train
                 )
             else:
                 X_tune, y_tune = X_train, y_train
@@ -203,10 +210,10 @@ def tune_selected_model(preprocessor, X_train, y_train,
             direction   = "maximize"
 
         else:
-            if len(X_train) > 10000:
+            if len(X_train) > 50000:
                 X_tune, _, y_tune, _ = train_test_split(
                     X_train, y_train,
-                    train_size=10000, random_state=42
+                    train_size=MAX_TUNE_SAMPLES, random_state=42
                 )
             else:
                 X_tune, y_tune = X_train, y_train
@@ -224,9 +231,9 @@ def tune_selected_model(preprocessor, X_train, y_train,
         def objective(trial):
             try:
                 if is_classification:
-                    model = _get_single_classifier(trial, model_name, weight)
+                    model = _build_classifier(trial, model_name, weight)
                 else:
-                    model = _get_single_regressor(trial, model_name)
+                    model = _build_regressor(trial, model_name)
 
                 pipeline = Pipeline(steps=[
                     ("preprocessor", preprocessor),

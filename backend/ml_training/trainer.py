@@ -13,7 +13,7 @@ from sklearn.metrics import (
 from .analyzer import analyze_columns
 from .preprocessor import auto_drop_columns, decide_preprocessing
 from .pipeline_builder import build_pipeline
-from .tuner import tune_selected_model
+from .tuner_single_model import tune_selected_model
 from .tuner_multi_model import tune_auto_select_model
 
 logger = logging.getLogger(__name__)
