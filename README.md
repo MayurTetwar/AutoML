@@ -8,14 +8,19 @@ This project is the backend API for an AutoML system built with FastAPI, Modal, 
 - Accept dataset uploads and start AutoML training jobs
 - Store model metadata and trained models
 - Serve predictions from trained models
-- Support both manual model selection and Optuna-based automatic model selection
+- Support both manual model selection and automatic Optuna-based model selection
 
-## What changed
+## Features
 
-- Added `POST /train/auto` to run Optuna-powered model search and tuning automatically
-- Replaced the old `timeout` input with a simpler `intensity` option
-- `intensity` values are: `low`, `medium`, `high`
-- Manual training still works via `POST /train/` using a selected model name
+- `POST /train/` — manual training with a selected model and intensity control
+- `POST /train/auto` — Optuna-powered automatic model selection and tuning
+- `GET /train/status/{job_id}` — poll training job status
+- `GET /train/jobs` — list user training jobs
+- `GET /models/` — list user-owned models
+- `GET /models/{model_id}` — get model metadata
+- `GET /models/{model_id}/features` — get model input schema
+- `POST /models/{model_id}/predict` — run predictions
+- `POST /auth/signup`, `POST /auth/login`, `POST /auth/logout`, `DELETE /auth/delete-account`
 
 ## Project structure
 
@@ -86,7 +91,7 @@ modal secret create automl-secrets \
 ## Contributing
 
 - Keep backend logic inside `backend/api/`, `backend/ml_training/`, and `backend/storage/`
-- Document new API endpoints in `API_DOCS.md`
+- Document API endpoints in `API_DOCS.md`
 - Keep auth and permission logic consistent
 - Use clear commit messages and feature branches
 - Do not store secrets in source control
@@ -95,6 +100,6 @@ modal secret create automl-secrets \
 
 - The deployed backend URL is:
   `https://mayurtetwar123--automl-api-fastapi-app.modal.run`
-- Use `API_DOCS.md` for up-to-date endpoint usage and request examples.
-- `intensity` is now the primary training control instead of raw timeout seconds.
-- `POST /train/auto` lets Optuna choose the best model automatically, so users do not need to provide `model_name`.
+- Use `API_DOCS.md` for current endpoint usage and examples.
+- `intensity` is the current training control input, replacing raw timeout values.
+- `POST /train/auto` performs automatic model selection and tuning with Optuna, so `model_name` is not required.

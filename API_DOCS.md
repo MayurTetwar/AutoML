@@ -85,8 +85,8 @@ Authorization: Bearer <access_token>
   - `model_name` - selected model name
 
 - Notes:
-  - `intensity` controls the amount of search/tuning time.
-  - `low` is faster, `medium` balances speed and quality, `high` gives more search time.
+  - `intensity` controls how much training time and tuning effort will be used.
+  - `low` is faster, `medium` balances speed and quality, `high` uses more time and resources.
 
 - Example response:
   ```json
@@ -112,9 +112,9 @@ Authorization: Bearer <access_token>
   - `intensity` - `low`, `medium`, or `high`
 
 - Notes:
-  - This route does not require `model_name`.
-  - Optuna will automatically search across supported models and hyperparameters.
-  - Recommended `medium` or `high` for better automatic model selection.
+  - `model_name` is not required.
+  - Optuna will automatically try multiple models and tune hyperparameters.
+  - Use `medium` or `high` for better auto model selection.
 
 - Example response:
   ```json
@@ -258,6 +258,9 @@ Example response:
 
 - All model and job endpoints require authentication.
 - Use `/models/{model_id}/features` before `/models/{model_id}/predict` to know the required input fields.
+- `intensity` is the current training control value.
+- The deployed Swagger UI is available at:
+  `https://mayurtetwar123--automl-api-fastapi-app.modal.run/docs`
 - `intensity` is now used instead of raw timeout values.
 - The deployed Swagger UI is available at:
   `https://mayurtetwar123--automl-api-fastapi-app.modal.run/docs`
