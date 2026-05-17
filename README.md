@@ -8,6 +8,14 @@ This project is the backend API for an AutoML system built with FastAPI, Modal, 
 - Accept dataset uploads and start AutoML training jobs
 - Store model metadata and trained models
 - Serve predictions from trained models
+- Support both manual model selection and Optuna-based automatic model selection
+
+## What changed
+
+- Added `POST /train/auto` to run Optuna-powered model search and tuning automatically
+- Replaced the old `timeout` input with a simpler `intensity` option
+- `intensity` values are: `low`, `medium`, `high`
+- Manual training still works via `POST /train/` using a selected model name
 
 ## Project structure
 
@@ -87,5 +95,6 @@ modal secret create automl-secrets \
 
 - The deployed backend URL is:
   `https://mayurtetwar123--automl-api-fastapi-app.modal.run`
-- Use `API_DOCS.md` for details on available endpoints and example requests.
-- If you add frontend support later, this README should be updated to describe the full stack.
+- Use `API_DOCS.md` for up-to-date endpoint usage and request examples.
+- `intensity` is now the primary training control instead of raw timeout seconds.
+- `POST /train/auto` lets Optuna choose the best model automatically, so users do not need to provide `model_name`.

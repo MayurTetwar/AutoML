@@ -71,9 +71,9 @@ Authorization: Bearer <access_token>
 
 ### Training
 
-#### Start training
+#### Manual training
 
-- `POST /train/`
+- Endpoint: `POST /train/`
 - Request type: `multipart/form-data`
 - Headers:
   - `Authorization: Bearer <access_token>`
@@ -81,8 +81,12 @@ Authorization: Bearer <access_token>
   - `file` - CSV or Excel file (`.csv`, `.xlsx`, `.xls`)
   - `target_column` - column name to predict
   - `problem_type_classification` - boolean (`true` for classification, `false` for regression)
-  - `timeout` - timeout in seconds (minimum `60`)
-  - `model_name` - model selection name
+  - `intensity` - `low`, `medium`, or `high`
+  - `model_name` - selected model name
+
+- Notes:
+  - `intensity` controls the amount of search/tuning time.
+  - `low` is faster, `medium` balances speed and quality, `high` gives more search time.
 
 - Example response:
   ```json
@@ -95,9 +99,37 @@ Authorization: Bearer <access_token>
   }
   ```
 
+#### Auto training with Optuna
+
+- Endpoint: `POST /train/auto`
+- Request type: `multipart/form-data`
+- Headers:
+  - `Authorization: Bearer <access_token>`
+- Fields:
+  - `file` - CSV or Excel file (`.csv`, `.xlsx`, `.xls`)
+  - `target_column` - column name to predict
+  - `problem_type_classification` - boolean (`true` for classification, `false` for regression)
+  - `intensity` - `low`, `medium`, or `high`
+
+- Notes:
+  - This route does not require `model_name`.
+  - Optuna will automatically search across supported models and hyperparameters.
+  - Recommended `medium` or `high` for better automatic model selection.
+
+- Example response:
+  ```json
+  {
+    "message": "Auto training started. Optuna will select the best model automatically.",
+    "job_id": "<job-id>",
+    "model_name": "Auto — Optuna selecting best model",
+    "status": "pending",
+    "track_url": "/train/status/<job-id>"
+  }
+  ```
+
 #### Check training status
 
-- `GET /train/status/{job_id}`
+- Endpoint: `GET /train/status/{job_id}`
 - Headers:
   - `Authorization: Bearer <access_token>`
 - Response fields:
@@ -111,7 +143,7 @@ Authorization: Bearer <access_token>
 
 #### List your training jobs
 
-- `GET /train/jobs`
+- Endpoint: `GET /train/jobs`
 - Headers:
   - `Authorization: Bearer <access_token>`
 - Response:
@@ -126,7 +158,7 @@ Authorization: Bearer <access_token>
 
 #### List models
 
-- `GET /models/`
+- Endpoint: `GET /models/`
 - Headers:
   - `Authorization: Bearer <access_token>`
 - Response:
@@ -147,14 +179,14 @@ Authorization: Bearer <access_token>
 
 #### Get model metadata
 
-- `GET /models/{model_id}`
+- Endpoint: `GET /models/{model_id}`
 - Headers:
   - `Authorization: Bearer <access_token>`
 - Returns full model metadata.
 
 #### Get model feature schema
 
-- `GET /models/{model_id}/features`
+- Endpoint: `GET /models/{model_id}/features`
 - Headers:
   - `Authorization: Bearer <access_token>`
 - Response example:
@@ -177,7 +209,7 @@ Authorization: Bearer <access_token>
 
 #### Predict with a model
 
-- `POST /models/{model_id}/predict`
+- Endpoint: `POST /models/{model_id}/predict`
 - Headers:
   - `Authorization: Bearer <access_token>`
 - Request body: JSON object with all required features returned by `/models/{model_id}/features`
@@ -203,14 +235,14 @@ Example response:
 
 #### Logout
 
-- `POST /auth/logout`
+- Endpoint: `POST /auth/logout`
 - Headers:
   - `Authorization: Bearer <access_token>`
 - Logs out the current session.
 
 #### Delete account
 
-- `DELETE /auth/delete-account`
+- Endpoint: `DELETE /auth/delete-account`
 - Headers:
   - `Authorization: Bearer <access_token>`
 - Permanently deletes the account and all user models.
@@ -226,38 +258,9 @@ Example response:
 
 - All model and job endpoints require authentication.
 - Use `/models/{model_id}/features` before `/models/{model_id}/predict` to know the required input fields.
+- `intensity` is now used instead of raw timeout values.
 - The deployed Swagger UI is available at:
   `https://mayurtetwar123--automl-api-fastapi-app.modal.run/docs`
-
-    "models": [
-      {
-        "model_id": "<model-id>",
-        "model_name": "Random Forest",
-        "type": "Regression",
-        "score": 0.92,
-        "created_at": "2026-05-15T12:34:56Z"
-      }
-    ]
-  }
-  ```
-
-#### Get model metadata
-
-- `GET /models/{model_id}`
-- Response includes the model record and stored metadata.
-
-#### Get model feature schema
-
-- `GET /models/{model_id}/features`
-- Response includes expected feature names and types, plus an example input template.
-
-Example response:
-```json
-{
-  "model_id": "<model-id>",
-  "feature_count": 6,
-  "features": {
-    "temperature": "float",
     "humidity": "float",
     "season": "string"
   },
