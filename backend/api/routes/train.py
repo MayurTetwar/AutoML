@@ -215,32 +215,32 @@ async def train_auto(
     df_json = df.to_json()
  
     # ── Spawn Modal auto training job ──
-    # from modal_app import run_auto_training
-    # await run_auto_training.spawn.aio(
-    #     job_id       = job_id,
-    #     user_id      = user_id,
-    #     df_json      = df_json,
-    #     target_col   = target_column,
-    #     problem_type = problem_type_classification,
-    #     timeout      = timeout,
-    #     file_name    = file.filename,
-    # )
-
-    # Testing code
-    update_job_status(job_id=job_id, status="running")
-    result = start_auto_model_building(
-        df           = df,
+    from modal_app import run_auto_training
+    await run_auto_training.spawn.aio(
+        job_id       = job_id,
+        user_id      = user_id,
+        df_json      = df_json,
         target_col   = target_column,
-        problemTypeB = problem_type_classification,
+        problem_type = problem_type_classification,
         timeout      = timeout,
         file_name    = file.filename,
-        user_id      = user_id,
     )
-    update_job_status(
-        job_id   = job_id,
-        status   = "completed",
-        model_id = result["model_id"],
-    )
+
+    # Testing code
+    # update_job_status(job_id=job_id, status="running")
+    # result = start_auto_model_building(
+    #     df           = df,
+    #     target_col   = target_column,
+    #     problemTypeB = problem_type_classification,
+    #     timeout      = timeout,
+    #     file_name    = file.filename,
+    #     user_id      = user_id,
+    # )
+    # update_job_status(
+    #     job_id   = job_id,
+    #     status   = "completed",
+    #     model_id = result["model_id"],
+    # )
  
     return JSONResponse(
         status_code = 202,
