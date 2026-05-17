@@ -33,7 +33,7 @@ async def train(
     file:                        Annotated[UploadFile, File(..., description="CSV or Excel dataset")],
     target_column:               Annotated[str,  Form(..., description="Target column name")],
     problem_type_classification: Annotated[bool, Form(..., description="True = Classification, False = Regression")],
-    timeout:                     Annotated[int,  Form(..., ge=60, description="Tuning timeout in seconds (minimum: 60)")],
+    intensity:                   Annotated[str, Form(..., description="Training intensity — 'low', 'medium', 'high'")],
     model_name:                  Annotated[str,  Form(..., description=f"Classification: {classification_models} | Regression: {regression_models}")],
     user_id: str = Depends(get_current_user),
 ):
@@ -76,6 +76,19 @@ async def train(
             status_code=400,
             detail=f"Dataset too small ({len(df)} rows). Minimum 100 rows required."
         )
+
+    # Map intensity to timeout seconds
+    intensity_map = {
+        "low":    60,
+        "medium": 180,
+        "high":   360,
+    }
+    if intensity not in intensity_map:
+        raise HTTPException(
+            status_code=400,
+            detail="intensity must be 'low', 'medium', or 'high'."
+        )
+    timeout = intensity_map[intensity]
 
     # ── Create job record in DB ──
     job_id = str(uuid.uuid4())
@@ -126,7 +139,7 @@ async def train_auto(
     file:                        Annotated[UploadFile, File(..., description="CSV or Excel dataset")],
     target_column:               Annotated[str,  Form(..., description="Target column name")],
     problem_type_classification: Annotated[bool, Form(..., description="True = Classification, False = Regression")],
-    timeout:                     Annotated[int,  Form(..., ge=60, description="Tuning timeout in seconds (minimum: 60). Recommended: 300+ for auto mode")],
+    intensity:                   Annotated[str, Form(..., description="Training intensity — 'low', 'medium', 'high'. Auto mode uses longer timeouts than manual.")],
     user_id: str = Depends(get_current_user),
 ):
     """
@@ -177,44 +190,57 @@ async def train_auto(
             detail=f"Dataset too small ({len(df)} rows). Minimum 100 rows required."
         )
  
+    # Auto mode uses higher timeouts — searches across all models
+    intensity_map = {
+        "low":    180,
+        "medium": 420,
+        "high":   900,
+    }
+    if intensity not in intensity_map:
+        raise HTTPException(
+            status_code=400,
+            detail="intensity must be 'low', 'medium', or 'high'."
+        )
+    timeout = intensity_map[intensity]
+
     # ── Create job record ──
     job_id = str(uuid.uuid4())
     create_job(
         job_id     = job_id,
         user_id    = user_id,
-        model_name = "Auto (Optuna selecting...)",  # placeholder until done
+        model_name = f"Auto ({intensity} intensity)",
     )
  
     # ── Serialize DataFrame ──
     df_json = df.to_json()
  
     # ── Spawn Modal auto training job ──
-    from modal_app import run_auto_training
-    await run_auto_training.spawn.aio(
-        job_id       = job_id,
-        user_id      = user_id,
-        df_json      = df_json,
-        target_col   = target_column,
-        problem_type = problem_type_classification,
-        timeout      = timeout,
-        file_name    = file.filename,
-    )
-    
-    # Testing code
-    # update_job_status(job_id=job_id, status="running")
-    # result = start_auto_model_building(
-    #     df           = df,
+    # from modal_app import run_auto_training
+    # await run_auto_training.spawn.aio(
+    #     job_id       = job_id,
+    #     user_id      = user_id,
+    #     df_json      = df_json,
     #     target_col   = target_column,
-    #     problemTypeB = problem_type_classification,
+    #     problem_type = problem_type_classification,
     #     timeout      = timeout,
     #     file_name    = file.filename,
-    #     user_id      = user_id,
     # )
-    # update_job_status(
-    #     job_id   = job_id,
-    #     status   = "completed",
-    #     model_id = result["model_id"],
-    # )
+
+    # Testing code
+    update_job_status(job_id=job_id, status="running")
+    result = start_auto_model_building(
+        df           = df,
+        target_col   = target_column,
+        problemTypeB = problem_type_classification,
+        timeout      = timeout,
+        file_name    = file.filename,
+        user_id      = user_id,
+    )
+    update_job_status(
+        job_id   = job_id,
+        status   = "completed",
+        model_id = result["model_id"],
+    )
  
     return JSONResponse(
         status_code = 202,
