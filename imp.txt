@@ -2,6 +2,10 @@
 # env\Scripts\activate (activation)
 
 *****************************************************************************************
+# How to run the frontend:- 
+# npm run dev
+
+*****************************************************************************************
 # Supabase Dashboard Setup for user auth #
 
 -- Step 1: Add user_id to models table

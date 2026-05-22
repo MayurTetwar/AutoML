@@ -15,4 +15,10 @@ python-multipart==0.0.9
 
 uuid6==2025.0.1
 supabase==2.29.0
+
+modal
+python-dotenv
+passlib
+bcrypt
+PyJWT
 python-dotenv==1.2.2

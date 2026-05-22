@@ -1,105 +1,126 @@
-# AutoML Backend Project
+<div align="center">
+  <h1>🚀 AutoML SaaS Platform</h1>
+  <p><strong>A no-code Machine Learning platform that goes from raw dataset to production-ready REST API in minutes.</strong></p>
+</div>
 
-This project is the backend API for an AutoML system built with FastAPI, Modal, and Supabase.
+---
 
-## Purpose
+## 📖 Overview
 
-- Provide user authentication and authorization
-- Accept dataset uploads and start AutoML training jobs
-- Store model metadata and trained models
-- Serve predictions from trained models
-- Support both manual model selection and automatic Optuna-based model selection
+This project is a complete full-stack SaaS application that allows users to upload datasets (CSV/Excel) and train machine learning models automatically. It eliminates the need for boilerplate ML code by leveraging **Optuna** for automatic hyperparameter tuning and model selection.
 
-## Features
+Once a model finishes training, it is instantly deployed and accessible via a private, authenticated REST API endpoint, ready to be integrated into any frontend or external application.
 
-- `POST /train/` — manual training with a selected model and intensity control
-- `POST /train/auto` — Optuna-powered automatic model selection and tuning
-- `GET /train/status/{job_id}` — poll training job status
-- `GET /train/jobs` — list user training jobs
-- `GET /models/` — list user-owned models
-- `GET /models/{model_id}` — get model metadata
-- `GET /models/{model_id}/features` — get model input schema
-- `POST /models/{model_id}/predict` — run predictions
-- `POST /auth/signup`, `POST /auth/login`, `POST /auth/logout`, `DELETE /auth/delete-account`
+## ✨ Key Features
 
-## Project structure
+- **No-Code Training:** Automatically trains and evaluates Classification or Regression models (`XGBoost`, `LightGBM`, `Random Forest`, etc.).
+- **Auto & Manual Modes:** Choose exactly which model to train, or let Optuna's Auto Mode find the best algorithm and hyperparameters for your dataset.
+- **Instant Predictions:** Every trained model receives a dedicated REST API endpoint for real-time inference.
+- **Live Dashboard:** Real-time UI updates to monitor pending, running, and completed training jobs.
+- **Secure Authentication:** JWT-based user authentication and row-level security powered by Supabase.
 
-- `backend/`
-  - `main.py` — FastAPI application and route registration
-  - `modal_app.py` — Modal deployment configuration and remote training runner
-  - `api/` — API routes and dependencies
-  - `ml_training/` — training, preprocessing, and model building logic
-  - `storage/` — Supabase client, database access, cache, and model storage helpers
-- `requirements.txt` — Python dependencies
-- `API_DOCS.md` — public API reference for endpoint consumers
+## 🛠️ Technology Stack
 
-## Get started
+**Frontend:**
+- React, Vite, React Router
+- Vanilla CSS + Tailwind CSS v4 (Custom UI design system)
 
-1. Activate the virtual environment:
-   ```powershell
-   .\env\Scripts\Activate.ps1
+**Backend:**
+- Python, FastAPI
+- Scikit-Learn, XGBoost, LightGBM, Optuna
+- Modal (Serverless cloud compute for heavy ML workloads)
+
+**Database & Auth:**
+- Supabase (PostgreSQL, GoTrue Auth)
+
+---
+
+## 💻 How to Run Locally
+
+If you just want to run the UI, the backend is currently deployed live on Modal. You only need to start the frontend!
+
+### 1. Start the Frontend (UI)
+
+1. Open your terminal and navigate to the frontend directory:
+   ```bash
+   cd frontend
    ```
+2. Install the dependencies:
+   ```bash
+   npm install
+   ```
+3. Create a `.env` file in the `frontend/` folder:
+   ```env
+   # Points to the live cloud backend by default
+   VITE_API_BASE_URL=https://mayurtetwar123--automl-api-fastapi-app.modal.run
+   ```
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
+   *Open `http://localhost:5173` in your browser.*
 
-2. Install dependencies:
-   ```powershell
+---
+
+### 2. (Optional) Run the Backend Locally
+
+If you want to modify the Python API or ML training logic, you can run the backend locally instead of using the live Modal endpoint.
+
+1. Activate the Python virtual environment and install dependencies:
+   ```bash
+   .\env\Scripts\Activate.ps1
    pip install -r requirements.txt
    ```
 
-3. Set required Supabase environment variables:
-   ```powershell
-   setx SUPABASE_URL "https://<your-supabase-url>"
-   setx SUPABASE_ANON_KEY "<your-anon-key>"
-   setx SUPABASE_SERVICE_ROLE_KEY "<your-service-role-key>"
+2. Create a `.env` file in the root directory with your Supabase credentials:
+   ```env
+   SUPABASE_URL="https://<your-supabase-url>"
+   SUPABASE_KEY="<your-anon-key>"
+   SUPABASE_SERVICE_ROLE_KEY="<your-service-role-key>"
    ```
 
-4. Run the backend locally:
-   ```powershell
+3. Start the FastAPI server:
+   ```bash
    uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
    ```
+   *The API will be available at `http://localhost:8000`. You can view the Swagger UI docs at `http://localhost:8000/docs`.*
 
-5. Verify the API is running:
-   - Swagger UI: `http://localhost:8000/docs`
-   - ReDoc: `http://localhost:8000/redoc`
+*(Note: If running the backend locally, remember to change your `frontend/.env` to `VITE_API_BASE_URL=http://localhost:8000`)*
 
-## Deployment
+---
 
-The backend can be deployed using Modal with `backend/modal_app.py`.
+## ☁️ Deploying the Backend to Modal
 
-### Local Modal testing
+This backend is designed to run serverlessly on [Modal](https://modal.com/) to handle intensive ML compute efficiently.
 
-```powershell
-modal serve backend/modal_app.py
-```
+1. Create a secret in your Modal dashboard or via CLI to hold your database credentials:
+   ```bash
+   modal secret create automl-secrets SUPABASE_URL=<url> SUPABASE_ANON_KEY=<key> SUPABASE_SERVICE_ROLE_KEY=<service-key>
+   ```
 
-### Deploy to Modal
+2. Deploy the application to Modal:
+   ```bash
+   modal deploy backend/modal_app.py
+   ```
 
-```powershell
-modal deploy backend/modal_app.py
-```
+---
 
-### Modal secrets
+## 📡 API Reference
 
-Create secrets once before deployment:
+Here are the primary REST endpoints exposed by the backend:
 
-```powershell
-modal secret create automl-secrets \
-  SUPABASE_URL=<your-url> \
-  SUPABASE_ANON_KEY=<your-anon-key> \
-  SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
-```
+**Authentication:**
+- `POST /auth/signup` — Register a new user
+- `POST /auth/login` — Login and receive JWT token
 
-## Contributing
+**Training:**
+- `POST /train/` — Start a manual training job
+- `POST /train/auto` — Start an automated (Optuna) training job
+- `GET /train/jobs` — View history of your training jobs
+- `GET /train/status/{job_id}` — Poll status of an active job
 
-- Keep backend logic inside `backend/api/`, `backend/ml_training/`, and `backend/storage/`
-- Document API endpoints in `API_DOCS.md`
-- Keep auth and permission logic consistent
-- Use clear commit messages and feature branches
-- Do not store secrets in source control
-
-## Notes
-
-- The deployed backend URL is:
-  `https://mayurtetwar123--automl-api-fastapi-app.modal.run`
-- Use `API_DOCS.md` for current endpoint usage and examples.
-- `intensity` is the current training control input, replacing raw timeout values.
-- `POST /train/auto` performs automatic model selection and tuning with Optuna, so `model_name` is not required.
+**Models & Predictions:**
+- `GET /models/` — List all your successfully trained models
+- `GET /models/{model_id}` — Get metadata, accuracy scores, and hyperparameters
+- `GET /models/{model_id}/features` — View the required JSON schema for predictions
+- `POST /models/{model_id}/predict` — Send JSON payload to get ML predictions
