@@ -139,6 +139,24 @@ async def logout():
 
 
 # ─────────────────────────────────────────────
+# 3b. GET /auth/me  — verify token is still valid
+# ─────────────────────────────────────────────
+
+@router.get(
+    "/me",
+    status_code=status.HTTP_200_OK,
+    summary="Verify token and return current user info",
+)
+async def me(user_id: str = Depends(get_current_user)):
+    """
+    Lightweight endpoint the frontend calls on startup to check
+    whether the stored JWT is still valid.
+    Returns 200 + user_id if valid, or 401 if expired / invalid.
+    """
+    return {"user_id": user_id}
+
+
+# ─────────────────────────────────────────────
 # 4. DELETE /auth/delete-account
 # ─────────────────────────────────────────────
 
