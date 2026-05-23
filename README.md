@@ -18,6 +18,7 @@ Once a model finishes training, it is instantly deployed and accessible via a pr
 - **Instant Predictions:** Every trained model receives a dedicated REST API endpoint for real-time inference.
 - **Live Dashboard:** Real-time UI updates to monitor pending, running, and completed training jobs.
 - **Secure Authentication:** JWT-based user authentication and row-level security powered by Supabase.
+- **Developer API Keys:** Generate permanent API keys to integrate your models into external apps or scripts without requiring user login.
 
 ## 🛠️ Technology Stack
 
@@ -109,9 +110,12 @@ This backend is designed to run serverlessly on [Modal](https://modal.com/) to h
 
 Here are the primary REST endpoints exposed by the backend:
 
-**Authentication:**
+**Authentication & API Keys:**
 - `POST /auth/signup` — Register a new user
 - `POST /auth/login` — Login and receive JWT token
+- `POST /api-keys/` — Generate a new permanent API key
+- `GET /api-keys/` — List all active API keys
+- `DELETE /api-keys/{key_id}` — Revoke an API key
 
 **Training:**
 - `POST /train/` — Start a manual training job
