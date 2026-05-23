@@ -499,3 +499,53 @@ body {
     display: flex !important;
   }
 }
+
+/* ——————————— API Key Reveal Banner ——————————— */
+.api-key-reveal {
+  background: linear-gradient(135deg, rgb(240 253 244), rgb(220 252 231));
+  border: 1.5px solid rgb(134 239 172);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  position: relative;
+}
+
+.api-key-reveal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.api-key-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.625rem;
+  background: rgb(254 249 195);
+  border: 1px solid rgb(253 224 71);
+  color: rgb(133 100 4);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.api-key-value-box {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--foreground);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.api-key-value {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: rgb(134 239 172);
+  word-break: break-all;
+  line-height: 1.5;
+  user-select: all;
+}
+

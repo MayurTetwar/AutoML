@@ -87,7 +87,7 @@ export default function ModelDetailPanel({ model, onClose, onDeleted }) {
     : '{\n  "feature1": value,\n  "feature2": value\n}'
 
   const snippet = `POST ${API}/models/${model.model_id}/predict
-Authorization: Bearer <your_token>
+X-API-Key: sk-your-api-key-here
 Content-Type: application/json
 
 ${exampleBody}`
@@ -293,6 +293,10 @@ ${exampleBody}`
                   {snippet}
                 </pre>
               </div>
+
+              <p style={{ fontSize: '0.75rem', color: 'var(--secondary)', marginTop: '0.25rem' }}>
+                Generate an API key from the <strong>API Keys</strong> tab in the sidebar.
+              </p>
             </div>
 
             {/* Delete */}

@@ -137,3 +137,29 @@ export async function deleteModel(modelId) {
   });
   return handleResponse(res);
 }
+
+/* ——————— API Keys ——————— */
+export async function createApiKey(name) {
+  const res = await fetch(`${API}/api-keys/`, {
+    method: 'POST',
+    headers: getHeaders(true),
+    body: JSON.stringify({ name }),
+  });
+  return handleResponse(res);
+}
+
+export async function getApiKeys() {
+  const res = await fetch(`${API}/api-keys/`, {
+    method: 'GET',
+    headers: getHeaders(false),
+  });
+  return handleResponse(res);
+}
+
+export async function deleteApiKey(keyId) {
+  const res = await fetch(`${API}/api-keys/${keyId}`, {
+    method: 'DELETE',
+    headers: getHeaders(false),
+  });
+  return handleResponse(res);
+}

@@ -4,6 +4,8 @@ import JobCard from '../components/JobCard'
 import ModelCard from '../components/ModelCard'
 import ModelDetailPanel from '../components/ModelDetailPanel'
 import TrainModal from '../components/TrainModal'
+import ApiKeysPanel from '../components/ApiKeysPanel'
+import QuickStartGuide from '../components/QuickStartGuide'
 import { getJobs, getJobStatus, getModels, deleteModel } from '../api'
 
 const SIDEBAR_ITEMS = [
@@ -25,6 +27,25 @@ const SIDEBAR_ITEMS = [
         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
         <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
         <line x1="12" y1="22.08" x2="12" y2="12" />
+      </svg>
+    ),
+  },
+  {
+    key: 'api-keys',
+    label: 'API Keys',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4" />
+      </svg>
+    ),
+  },
+  {
+    key: 'quick-start',
+    label: 'Quick Start',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
       </svg>
     ),
   },
@@ -559,6 +580,12 @@ export default function Dashboard() {
               )}
             </section>
           )}
+
+          {/* === API Keys View === */}
+          {activeTab === 'api-keys' && <ApiKeysPanel />}
+
+          {/* === Quick Start Guide View === */}
+          {activeTab === 'quick-start' && <QuickStartGuide />}
         </main>
       </div>
 
