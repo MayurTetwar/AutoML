@@ -5,6 +5,7 @@ from storage.supabase_client import supabase, supabase_admin
 from storage.model_database import get_all_models
 from storage.model_storage import delete_model_from_storage
 from storage.model_cache import model_cache
+from storage.apikeys_database import delete_all_api_keys_for_user
 from api.dependencies.auth import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -231,7 +232,14 @@ async def delete_account(
         # Non-fatal — log and continue
         print(f"Warning: could not delete training jobs for {user_id}: {str(e)}")
 
-    # ── Step 6: delete user from Supabase Auth ──
+    # ── Step 6: delete all API keys ──
+    try:
+        delete_all_api_keys_for_user(user_id)
+    except Exception as e:
+        # Non-fatal — log and continue
+        print(f"Warning: could not delete API keys for {user_id}: {str(e)}")
+
+    # ── Step 7: delete user from Supabase Auth ──
     # Only supabase_admin (service role key) can do this
     try:
         supabase_admin.auth.admin.delete_user(user_id)
