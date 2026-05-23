@@ -65,7 +65,7 @@ logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routes import models, train, auth
+from api.routes import models, train, auth, apikeys
 app = FastAPI(
     title="AutoML API",
     description="Train and serve ML models. All model operations require authentication.",              
@@ -80,10 +80,11 @@ app.add_middleware(
 )
  
 # --- Routers ---
-from api.routes import models, train, auth
+from api.routes import models, train, auth, apikeys
 app.include_router(auth.router) 
 app.include_router(train.router)
 app.include_router(models.router)
+app.include_router(apikeys.router)
 
 @app.get("/", tags=["Health"])
 def health():
