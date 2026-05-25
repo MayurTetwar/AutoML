@@ -217,22 +217,26 @@ export default function ApiKeysPanel() {
           </p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(18rem, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
           {keys.map((k) => (
             <div
               key={k.key_id}
-              className="card"
+              className="card card-hover api-key-card"
               style={{
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '1rem',
-                padding: '1rem 1.25rem',
-                flexWrap: 'wrap',
+                flexDirection: 'column',
+                gap: '0.625rem',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', flex: 1, minWidth: 0 }}>
-                {/* Key icon */}
+              {/* Row 1: Icon + Name */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1.4rem',
+                }}
+              >
+                {/* Icon */}
                 <div
                   style={{
                     width: '2.5rem',
@@ -250,48 +254,75 @@ export default function ApiKeysPanel() {
                   </svg>
                 </div>
 
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{k.name}</div>
-                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.125rem' }}>
-                    <span style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: '0.8125rem',
-                      color: 'var(--secondary)',
-                      background: 'var(--muted)',
-                      padding: '0.125rem 0.5rem',
-                      borderRadius: '0.375rem',
-                    }}>
-                      {k.key_prefix}
-                    </span>
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--secondary)' }}>
-                      Created {formatDate(k.created_at)}
-                    </span>
-                    {k.last_used_at && (
-                      <span style={{ fontSize: '0.8125rem', color: 'var(--secondary)' }}>
-                        Last used {formatDate(k.last_used_at)}
-                      </span>
-                    )}
-                  </div>
+                {/* Name */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h3
+                    style={{
+                      fontSize: '1.0625rem',
+                      fontWeight: 600,
+                      color: 'var(--foreground)',
+                      lineHeight: 1.3,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {k.name}
+                  </h3>
                 </div>
+
+                {/* Revoke button */}
+                <button
+                  className="btn btn-outline btn-sm api-key-revoke-btn"
+                  onClick={() => handleDelete(k.key_id, k.name)}
+                  style={{ 
+                    color: 'var(--destructive)', 
+                    borderColor: 'var(--destructive)', 
+                    flexShrink: 0,
+                    padding: '0.375rem 0.625rem',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgb(254 226 226)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                </button>
               </div>
 
-              <button
-                className="btn btn-outline btn-sm"
-                onClick={() => handleDelete(k.key_id, k.name)}
-                style={{ color: 'var(--destructive)', borderColor: 'var(--destructive)', flexShrink: 0 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgb(254 226 226)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent'
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
-                Revoke
-              </button>
+              {/* Key prefix - own line, left aligned */}
+              <span style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.8125rem',
+                color: 'var(--secondary)',
+                alignSelf: 'flex-start',
+                marginTop: '0.25rem',
+              }}>
+                {k.key_prefix}
+              </span>
+
+              {/* Dates — last line, left aligned */}
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '0.125rem',
+                marginTop: 'auto' 
+              }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--secondary)' }}>
+                  Created {formatDate(k.created_at)}
+                </span>
+                {k.last_used_at && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--secondary)' }}>
+                    Last used {formatDate(k.last_used_at)}
+                  </span>
+                )}
+              </div>
+              
             </div>
           ))}
         </div>

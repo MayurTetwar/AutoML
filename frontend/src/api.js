@@ -49,6 +49,14 @@ export async function logout() {
   return handleResponse(res);
 }
 
+export async function deleteAccount() {
+  const res = await fetch(`${API}/auth/delete-account`, {
+    method: 'DELETE',
+    headers: getHeaders(false),
+  });
+  return handleResponse(res);
+}
+
 export async function verifyToken() {
   const token = localStorage.getItem('access_token');
   if (!token) return false;

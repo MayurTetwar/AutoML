@@ -6,6 +6,15 @@
 # npm run dev
 
 *****************************************************************************************
+Deployment:- 
+1. cd E:\Mayur\Projects\AutoML\frontend
+2. vercel 
+3. Cheak all cmd
+4. vercel env add VITE_API_BASE_URL
+5. cheak all env variables are correct 
+6. vercel --prod (deploy the app (PRODUCTION))
+
+*****************************************************************************************
 # Supabase Dashboard Setup for user auth #
 
 -- Step 1: Add user_id to models table
@@ -33,6 +42,7 @@ USING (auth.uid() = user_id);
 
 My deployed backend:-  
 https://modal.com/apps/mayurtetwar123/main/deployed/automl-api
+https://mayurtetwar123--automl-api-fastapi-app.modal.run/
 
 Webiste:- 
-https://mayurtetwar123--automl-api-fastapi-app.modal.run/
+https://automl-gamma.vercel.app

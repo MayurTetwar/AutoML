@@ -21,7 +21,9 @@
 }
 
 /* ——————————— Base Reset ——————————— */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -243,35 +245,70 @@ body {
 }
 
 .badge-regression {
-  background: rgb(254 243 199);
-  color: rgb(146 64 14);
-  border: 1px solid rgb(253 186 116);
+  background: rgb(237 228 248);
+  color: rgb(88 60 160);
+  border: 1px solid rgb(196 176 228);
 }
 
 /* Animations */
 @keyframes pulse-badge {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.65; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.65;
+  }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slide-in-right {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 @keyframes slide-up {
-  from { transform: translateY(30px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 .animate-fade-in {
@@ -439,7 +476,9 @@ body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* File input */
@@ -453,7 +492,8 @@ body {
   background: var(--background);
 }
 
-.file-drop:hover, .file-drop.active {
+.file-drop:hover,
+.file-drop.active {
   border-color: var(--primary);
   background: var(--accent);
 }
@@ -485,8 +525,15 @@ body {
 
 /* Sidebar slide-in animation for mobile */
 @keyframes slide-in-left {
-  from { transform: translateX(-100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 /* ——————————— Sidebar Responsive ——————————— */
@@ -549,3 +596,81 @@ body {
   user-select: all;
 }
 
+/* ——————————— Mobile Responsive Fixes ——————————— */
+@media (max-width: 768px) {
+
+  /* ── Fix 4: Navbar — less cramped ── */
+  .navbar-signout-text {
+    display: none !important;
+  }
+
+  .navbar-signout-btn {
+    padding: 0.375rem 0.625rem !important;
+    min-width: unset !important;
+  }
+
+  .navbar-right {
+    gap: 0.5rem !important;
+  }
+
+  .navbar-training-btn {
+    padding: 0.375rem 0.75rem !important;
+    font-size: 0.75rem !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+  }
+
+  /* ── Fix 1 & 2: Job Card — compact + clock alignment ── */
+  .job-card {
+    padding: 0.75rem 1rem !important;
+    gap: 0.625rem !important;
+  }
+
+  .job-card-left {
+    gap: 0.625rem !important;
+  }
+
+  .job-card-icon {
+    width: 2rem !important;
+    height: 2rem !important;
+    border-radius: 0.5rem !important;
+  }
+
+  .job-card-icon svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .job-card-title {
+    font-size: 0.8125rem !important;
+  }
+
+  .job-card-meta {
+    gap: 0.375rem !important;
+    margin-top: 0.25rem !important;
+    flex-wrap: wrap;
+  }
+
+  .job-card-time {
+    display: inline-flex !important;
+    align-items: center !important;
+    vertical-align: middle !important;
+    line-height: 1 !important;
+  }
+
+  .job-card-time svg {
+    flex-shrink: 0;
+    vertical-align: middle;
+  }
+
+  /* ── Fix 3: API Key Card — compact on mobile ── */
+  .api-key-card {
+    gap: 0.5rem !important;
+    padding: 0.875rem 1rem !important;
+  }
+
+  .api-key-revoke-btn {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.75rem !important;
+  }
+}

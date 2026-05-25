@@ -52,7 +52,7 @@ export default function Landing() {
       {/* Hero */}
       <section
         style={{
-          padding: '6rem 0 5rem',
+          padding: '3rem 0 5rem',
           position: 'relative',
           overflow: 'hidden',
         }}

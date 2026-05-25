@@ -28,7 +28,7 @@ export default function JobCard({ job }) {
 
   return (
     <div
-      className="card animate-fade-in"
+      className="card animate-fade-in job-card"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -40,8 +40,9 @@ export default function JobCard({ job }) {
       }}
     >
       {/* Left */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: 0 }}>
+      <div className="job-card-left" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: 0 }}>
         <div
+          className="job-card-icon"
           style={{
             width: '2.5rem',
             height: '2.5rem',
@@ -72,6 +73,7 @@ export default function JobCard({ job }) {
         <div style={{ minWidth: 0 }}>
           {/* File name + Model name */}
           <div
+            className="job-card-title"
             style={{
               fontWeight: 600,
               fontSize: '0.9375rem',
@@ -106,7 +108,7 @@ export default function JobCard({ job }) {
           </div>
 
           {/* Badges and Created At */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.375rem' }}>
+          <div className="job-card-meta" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.375rem' }}>
             {/* Problem type badge */}
             {problemType && (
               <span
@@ -122,7 +124,7 @@ export default function JobCard({ job }) {
             
             {/* Created At */}
             {job.created_at && (
-              <span style={{ fontSize: '0.75rem', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <span className="job-card-time" style={{ fontSize: '0.75rem', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10"></circle>
                   <polyline points="12 6 12 12 16 14"></polyline>
