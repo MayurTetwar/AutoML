@@ -1,6 +1,7 @@
 <div align="center">
   <h1>🚀 AutoML SaaS Platform</h1>
   <p><strong>A no-code Machine Learning platform that goes from raw dataset to production-ready REST API in minutes.</strong></p>
+  <p>🌍 <strong>Live Demo:</strong> <a href="https://automl-gamma.vercel.app/">https://automl-gamma.vercel.app/</a></p>
 </div>
 
 ---
@@ -13,6 +14,7 @@ Once a model finishes training, it is instantly deployed and accessible via a pr
 
 ## ✨ Key Features
 
+- **Smart Data Preprocessing:** Intelligently cleans datasets by auto-dropping low-value columns (IDs, high missing rates, zero variance) and applies optimal transformations (scaling, encoding, log transforms) based on inferred data types.
 - **No-Code Training:** Automatically trains and evaluates Classification or Regression models (`XGBoost`, `LightGBM`, `Random Forest`, etc.).
 - **Auto & Manual Modes:** Choose exactly which model to train, or let Optuna's Auto Mode find the best algorithm and hyperparameters for your dataset.
 - **Instant Predictions:** Every trained model receives a dedicated REST API endpoint for real-time inference.
