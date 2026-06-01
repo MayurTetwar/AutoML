@@ -8,8 +8,8 @@ function getHeaders(isJson = true) {
   return headers;
 }
 
-async function handleResponse(res) {
-  if (res.status === 401) {
+async function handleResponse(res, skipAuthRedirect = false) {
+  if (res.status === 401 && !skipAuthRedirect) {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user_id');
     window.location.href = '/signin';
@@ -29,7 +29,7 @@ export async function signup(email, password) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  return handleResponse(res);
+  return handleResponse(res, true);
 }
 
 export async function login(email, password) {
@@ -38,7 +38,7 @@ export async function login(email, password) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  return handleResponse(res);
+  return handleResponse(res, true);
 }
 
 export async function logout() {

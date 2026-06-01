@@ -23,7 +23,8 @@ export default function AuthForm({ mode = 'signin', onSubmit }) {
       setIsAuth(true)
       navigate('/dashboard')
     } catch (err) {
-      setError(err.message || 'Something went wrong')
+      setError(!isSignup ? 'Invalid email or password. Please try again.' : (err.message || 'Something went wrong'))
+      setPassword('')
     } finally {
       setLoading(false)
     }
@@ -115,8 +116,6 @@ export default function AuthForm({ mode = 'signin', onSubmit }) {
               : 'Sign in to continue to your dashboard'}
           </p>
 
-          {error && <div className="error-msg">{error}</div>}
-
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '1.25rem' }}>
               <label className="label" htmlFor="email">Email</label>
@@ -126,7 +125,10 @@ export default function AuthForm({ mode = 'signin', onSubmit }) {
                 className="input"
                 placeholder="you@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  if (error) setError('')
+                }}
                 required
                 autoComplete="email"
               />
@@ -140,12 +142,17 @@ export default function AuthForm({ mode = 'signin', onSubmit }) {
                 className="input"
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  if (error) setError('')
+                }}
                 required
                 minLength={6}
                 autoComplete={isSignup ? 'new-password' : 'current-password'}
               />
             </div>
+
+            {error && <div className="error-msg" style={{ marginBottom: '1rem' }}>{error}</div>}
 
             <button
               type="submit"
