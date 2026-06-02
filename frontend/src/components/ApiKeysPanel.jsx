@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createApiKey, getApiKeys, deleteApiKey } from '../api'
+import { Key, Plus, Copy, Check, Trash2, AlertTriangle, CheckCircle, X, Shield, Code } from 'lucide-react'
 
 export default function ApiKeysPanel() {
   const [keys, setKeys] = useState([])
@@ -65,100 +66,83 @@ export default function ApiKeysPanel() {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
     })
+  }
+
+  function timeAgo(dateStr) {
+    if (!dateStr) return 'Never'
+    const d = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now - d
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+    if (diffDays > 0) return `${diffDays} days ago`
+    if (diffHours > 0) return `${diffHours} hours ago`
+    if (diffMins > 0) return `${diffMins} minutes ago`
+    return 'Just now'
   }
 
   return (
     <section className="animate-fade-in">
       {/* Header */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>API Keys</h1>
-        <p style={{ fontSize: '0.875rem', color: 'var(--secondary)' }}>
-          Create and manage API keys for external integrations — no login required
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-white mb-2">API Keys</h1>
+        <p className="text-sm text-gray-500">
+          Manage and generate secret keys for programmatic access to the AutoML.ai platform. Do not share your secret keys in publicly accessible areas.
         </p>
       </div>
 
       {/* ── New Key Created Banner ── */}
       {newKey && (
-        <div className="api-key-reveal animate-fade-in" style={{ marginBottom: '1.5rem' }}>
-          <div className="api-key-reveal-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgb(22 163 74)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                <polyline points="22 4 12 14.01 9 11.01" />
-              </svg>
-              <span style={{ fontWeight: 600, color: 'rgb(22 101 52)' }}>
-                API Key Created — "{newKey.name}"
-              </span>
+        <div className="mb-6 bg-emerald-500/5 border border-emerald-500/30 rounded-2xl p-5 glow-green animate-fade-in">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-emerald-400" />
+              <span className="font-semibold text-emerald-400 text-lg">Key Generated Successfully</span>
             </div>
             <button
-              className="btn btn-ghost btn-sm"
               onClick={() => setNewKey(null)}
-              style={{ color: 'var(--secondary)', padding: '0.25rem' }}
+              className="p-1 text-gray-500 hover:text-white rounded transition-colors cursor-pointer bg-transparent border-none"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
+              <X className="w-4 h-4" />
             </button>
           </div>
 
           {/* Warning */}
-          <div className="api-key-warning">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-              <line x1="12" y1="9" x2="12" y2="13" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-            <span>Save this key now — it will <strong>never</strong> be shown again!</span>
+          <div className="flex items-center gap-2 mb-4 text-amber-400 text-xs">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span>Please copy this key now. For your security, it will not be shown again.</span>
           </div>
 
-          {/* Raw Key Display */}
-          <div className="api-key-value-box">
-            <code className="api-key-value">{newKey.raw_key}</code>
+          {/* Key Value */}
+          <div className="flex items-center gap-3 bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3">
+            <code className="flex-1 font-mono text-sm text-gray-300 break-all select-all">
+              {newKey.raw_key}
+            </code>
             <button
-              className="btn btn-sm"
               onClick={() => copyToClipboard(newKey.raw_key)}
-              style={{
-                background: copied ? 'rgb(22 163 74)' : 'var(--primary)',
-                color: '#fff',
-                minWidth: '5rem',
-                transition: 'all 0.2s',
-              }}
+              className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all duration-200 cursor-pointer bg-transparent border-none flex-shrink-0"
             >
-              {copied ? (
-                <>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  Copy
-                </>
-              )}
+              {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
         </div>
       )}
 
       {/* ── Create Key Form ── */}
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <form onSubmit={handleCreate} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '14rem' }}>
-            <label className="label" htmlFor="api-key-name">Key Name</label>
+      <div className="mb-8">
+        <form onSubmit={handleCreate} className="flex items-end gap-3 flex-wrap">
+          <div className="flex-1 min-w-[14rem]">
+            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2" htmlFor="api-key-name">
+              New Key Name
+            </label>
             <input
               id="api-key-name"
               type="text"
-              className="input"
-              placeholder='e.g. "My App", "Production", "Testing"'
+              className="w-full px-4 py-3 bg-[#121212] border border-white/10 rounded-xl text-white placeholder-gray-600 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition-all duration-200"
+              placeholder="e.g., Production Environment"
               value={keyName}
               onChange={(e) => setKeyName(e.target.value)}
               maxLength={100}
@@ -167,162 +151,78 @@ export default function ApiKeysPanel() {
           </div>
           <button
             type="submit"
-            className="btn btn-primary"
+            className="flex items-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none"
             disabled={creating || !keyName.trim()}
-            style={{ height: '2.75rem' }}
           >
             {creating ? (
-              <>
-                <span className="spinner" style={{ width: '1rem', height: '1rem' }} />
-                Generating...
-              </>
+              <span className="spinner" style={{ width: '1rem', height: '1rem' }} />
             ) : (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Generate Key
-              </>
+              <Plus className="w-4 h-4" />
             )}
+            Create new secret key
           </button>
         </form>
-        {error && <div className="error-msg" style={{ marginTop: '0.75rem', marginBottom: 0 }}>{error}</div>}
+        {error && (
+          <div className="mt-3 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+            {error}
+          </div>
+        )}
       </div>
 
       {/* ── Keys List ── */}
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem 0' }}>
+        <div className="flex justify-center py-12">
           <span className="spinner" style={{ width: '2rem', height: '2rem' }} />
         </div>
       ) : keys.length === 0 ? (
-        <div
-          className="card"
-          style={{
-            textAlign: 'center',
-            padding: '4rem 2rem',
-            color: 'var(--secondary)',
-          }}
-        >
-          <svg
-            width="48" height="48" viewBox="0 0 24 24" fill="none"
-            stroke="var(--border)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-            style={{ margin: '0 auto 1rem' }}
-          >
-            <path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4" />
-          </svg>
-          <p style={{ fontWeight: 500, marginBottom: '0.25rem', fontSize: '1.0625rem' }}>No API keys yet</p>
-          <p style={{ fontSize: '0.8125rem' }}>
-            Create an API key above to start making predictions without login
-          </p>
+        <div className="bg-[#121212] border border-white/10 rounded-2xl text-center py-16 px-6">
+          <Key className="w-12 h-12 text-gray-700 mx-auto mb-4" />
+          <p className="text-white font-medium text-lg mb-1">No API keys yet</p>
+          <p className="text-gray-500 text-sm">Create an API key above to start making predictions without login</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(18rem, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {keys.map((k) => (
             <div
               key={k.key_id}
-              className="card card-hover api-key-card"
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.625rem',
-              }}
+              className="bg-[#121212] border border-white/10 rounded-2xl p-5 transition-all duration-300 hover:border-white/15 flex flex-col gap-4"
             >
-              {/* Row 1: Icon + Name */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '1.4rem',
-                }}
-              >
-                {/* Icon */}
-                <div
-                  style={{
-                    width: '2.5rem',
-                    height: '2.5rem',
-                    borderRadius: '0.75rem',
-                    background: 'var(--accent)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4" />
-                  </svg>
+              {/* Header: Icon + Name + Status */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+                  {k.status === 'active' ? (
+                    <Shield className="w-5 h-5 text-indigo-400" />
+                  ) : (
+                    <Code className="w-5 h-5 text-gray-500" />
+                  )}
                 </div>
-
-                {/* Name */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <h3
-                    style={{
-                      fontSize: '1.0625rem',
-                      fontWeight: 600,
-                      color: 'var(--foreground)',
-                      lineHeight: 1.3,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {k.name}
-                  </h3>
-                </div>
-
-                {/* Revoke button */}
-                <button
-                  className="btn btn-outline btn-sm api-key-revoke-btn"
-                  onClick={() => handleDelete(k.key_id, k.name)}
-                  style={{ 
-                    color: 'var(--destructive)', 
-                    borderColor: 'var(--destructive)', 
-                    flexShrink: 0,
-                    padding: '0.375rem 0.625rem',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgb(254 226 226)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent'
-                  }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Key prefix - own line, left aligned */}
-              <span style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '0.8125rem',
-                color: 'var(--secondary)',
-                alignSelf: 'flex-start',
-                marginTop: '0.25rem',
-              }}>
-                {k.key_prefix}
-              </span>
-
-              {/* Dates — last line, left aligned */}
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '0.125rem',
-                marginTop: 'auto' 
-              }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--secondary)' }}>
-                  Created {formatDate(k.created_at)}
-                </span>
-                {k.last_used_at && (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--secondary)' }}>
-                    Last used {formatDate(k.last_used_at)}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-semibold text-white truncate">{k.name}</h3>
+                  <span className={`inline-flex items-center gap-1 text-xs font-medium mt-0.5 ${
+                    k.status === 'active' ? 'text-green-400' : 'text-gray-500'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${k.status === 'active' ? 'bg-green-400' : 'bg-gray-500'}`} />
+                    {(k.status || 'ACTIVE').toUpperCase()}
                   </span>
-                )}
+                </div>
               </div>
-              
+
+              {/* Key Prefix */}
+              <code className="text-sm font-mono text-gray-500 break-all">
+                {k.key_prefix}••••••••••••••••
+              </code>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs text-gray-500">
+                <div>
+                  <span className="block uppercase tracking-wider text-[10px] text-gray-600 mb-0.5">Created</span>
+                  <span className="text-gray-400">{formatDate(k.created_at)}</span>
+                </div>
+                <div className="text-right">
+                  <span className="block uppercase tracking-wider text-[10px] text-gray-600 mb-0.5">Last Used</span>
+                  <span className="text-gray-400">{k.last_used_at ? timeAgo(k.last_used_at) : 'Never'}</span>
+                </div>
+              </div>
             </div>
           ))}
         </div>

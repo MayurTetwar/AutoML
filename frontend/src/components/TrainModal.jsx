@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { trainManual, trainAuto } from '../api'
+import { X, Upload, Play, Zap, Loader2 } from 'lucide-react'
 
 const CLASSIFICATION_MODELS = [
   'Logistic Regression',
@@ -85,70 +86,61 @@ export default function TrainModal({ onClose, onCreated }) {
   }
 
   return (
-    <>
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 50,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '1rem',
-        }}
-      >
-        <div className="backdrop" style={{ position: 'absolute', inset: 0, zIndex: -1 }} onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="backdrop absolute inset-0 z-[-1]" onClick={onClose} />
 
-        <div
-          className="animate-slide-up"
-          style={{
-            position: 'relative',
-            width: '100%',
-            maxWidth: '32rem',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            background: 'var(--background)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius)',
-            padding: '2rem',
-            boxShadow: '0 25px 50px rgba(0, 0, 0, 0.15)',
-          }}
-        >
+      <div className="animate-slide-up relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-[#121212] border border-white/10 rounded-2xl p-6 shadow-2xl">
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>New Training Job</h2>
-          <button onClick={onClose} className="btn btn-ghost btn-sm" style={{ padding: '0.375rem' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-white">New Training Job</h2>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 transition-all duration-200 cursor-pointer bg-transparent border-none"
+          >
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="tab-bar">
+        <div className="flex gap-1 p-1 bg-[#0a0a0a] rounded-xl mb-6">
           <button
-            className={`tab ${tab === 'manual' ? 'active' : ''}`}
+            className={`flex-1 py-2.5 px-4 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer border-none ${
+              tab === 'manual'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-transparent text-gray-400 hover:text-white'
+            }`}
             onClick={() => setTab('manual')}
           >
             Manual Training
           </button>
           <button
-            className={`tab ${tab === 'auto' ? 'active' : ''}`}
+            className={`flex-1 py-2.5 px-4 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer border-none ${
+              tab === 'auto'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-transparent text-gray-400 hover:text-white'
+            }`}
             onClick={() => setTab('auto')}
           >
             Auto Training
           </button>
         </div>
 
-        {error && <div className="error-msg">{error}</div>}
+        {error && (
+          <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           {/* File Upload */}
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label className="label">Dataset File</label>
+          <div className="mb-5">
+            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Dataset File</label>
             <div
-              className={`file-drop ${file ? 'active' : ''}`}
+              className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all duration-200 ${
+                file
+                  ? 'border-indigo-500/50 bg-indigo-500/5'
+                  : 'border-white/10 hover:border-white/20 bg-[#0a0a0a]'
+              }`}
               onClick={() => fileRef.current?.click()}
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleFileDrop}
@@ -158,24 +150,18 @@ export default function TrainModal({ onClose, onCreated }) {
                 type="file"
                 accept=".csv,.xlsx,.xls"
                 onChange={handleFileDrop}
+                className="hidden"
               />
               {file ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                  </svg>
-                  <span style={{ fontWeight: 500, color: 'var(--primary)' }}>{file.name}</span>
+                <div className="flex items-center gap-2 justify-center text-indigo-400">
+                  <Upload className="w-5 h-5" />
+                  <span className="font-medium text-sm">{file.name}</span>
                 </div>
               ) : (
                 <>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '0.5rem' }}>
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="17 8 12 3 7 8" />
-                    <line x1="12" y1="3" x2="12" y2="15" />
-                  </svg>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--secondary)' }}>
-                    Drop CSV or Excel file here, or <span style={{ color: 'var(--primary)', fontWeight: 500 }}>browse</span>
+                  <Upload className="w-6 h-6 text-gray-600 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">
+                    Drop CSV or Excel file here, or <span className="text-indigo-400 font-medium">browse</span>
                   </p>
                 </>
               )}
@@ -183,11 +169,11 @@ export default function TrainModal({ onClose, onCreated }) {
           </div>
 
           {/* Target Column */}
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label className="label" htmlFor="target_col">Target Column</label>
+          <div className="mb-5">
+            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2" htmlFor="target_col">Target Column</label>
             <input
               id="target_col"
-              className="input"
+              className="w-full px-4 py-3 bg-[#0a0a0a] border border-white/10 rounded-xl text-white placeholder-gray-600 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition-all duration-200"
               placeholder="e.g. price, label, category"
               value={targetColumn}
               onChange={(e) => setTargetColumn(e.target.value)}
@@ -196,19 +182,27 @@ export default function TrainModal({ onClose, onCreated }) {
           </div>
 
           {/* Problem Type */}
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label className="label">Problem Type</label>
-            <div className="toggle-group">
+          <div className="mb-5">
+            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Problem Type</label>
+            <div className="flex gap-1 p-1 bg-[#0a0a0a] rounded-xl">
               <button
                 type="button"
-                className={`toggle-option ${isClassification ? 'active' : ''}`}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer border-none ${
+                  isClassification
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-transparent text-gray-400 hover:text-white'
+                }`}
                 onClick={() => handleProblemTypeChange(true)}
               >
                 Classification
               </button>
               <button
                 type="button"
-                className={`toggle-option ${!isClassification ? 'active' : ''}`}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer border-none ${
+                  !isClassification
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-transparent text-gray-400 hover:text-white'
+                }`}
                 onClick={() => handleProblemTypeChange(false)}
               >
                 Regression
@@ -218,11 +212,11 @@ export default function TrainModal({ onClose, onCreated }) {
 
           {/* Model Name (manual only) */}
           {tab === 'manual' && (
-            <div style={{ marginBottom: '1.25rem' }}>
-              <label className="label" htmlFor="model_name">Model</label>
+            <div className="mb-5">
+              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2" htmlFor="model_name">Model</label>
               <select
                 id="model_name"
-                className="select"
+                className="w-full px-4 py-3 bg-[#0a0a0a] border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition-all duration-200 cursor-pointer appearance-none"
                 value={modelName}
                 onChange={(e) => setModelName(e.target.value)}
               >
@@ -234,33 +228,20 @@ export default function TrainModal({ onClose, onCreated }) {
           )}
 
           {tab === 'auto' && (
-            <div
-              className="card"
-              style={{
-                marginBottom: '1.25rem',
-                padding: '0.875rem 1rem',
-                background: 'var(--accent)',
-                border: '1px solid var(--ring)',
-                display: 'flex',
-                gap: '0.75rem',
-                alignItems: 'flex-start',
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '0.125rem' }}>
-                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-              </svg>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--primary)' }}>
+            <div className="mb-5 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex gap-3 items-start">
+              <Zap className="w-5 h-5 text-indigo-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-indigo-300 leading-relaxed">
                 Optuna will automatically select the best model and tune hyperparameters for you.
               </p>
             </div>
           )}
 
           {/* Intensity */}
-          <div style={{ marginBottom: '1.75rem' }}>
-            <label className="label" htmlFor="intensity">Training Intensity</label>
+          <div className="mb-6">
+            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2" htmlFor="intensity">Training Intensity</label>
             <select
               id="intensity"
-              className="select"
+              className="w-full px-4 py-3 bg-[#0a0a0a] border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition-all duration-200 cursor-pointer appearance-none"
               value={intensity}
               onChange={(e) => setIntensity(e.target.value)}
             >
@@ -273,19 +254,20 @@ export default function TrainModal({ onClose, onCreated }) {
           {/* Submit */}
           <button
             type="submit"
-            className="btn btn-primary btn-lg"
-            style={{ width: '100%' }}
+            className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none text-sm"
             disabled={loading}
           >
-            {loading && <span className="spinner" style={{ borderTopColor: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} />}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="5 3 19 12 5 21 5 3" />
-            </svg>
-            {tab === 'manual' ? 'Start Training' : 'Start Auto Training'}
+            {loading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <>
+                <Play className="w-4 h-4" />
+                {tab === 'manual' ? 'Start Training' : 'Start Auto Training'}
+              </>
+            )}
           </button>
         </form>
-        </div>
       </div>
-    </>
+    </div>
   )
 }

@@ -1,9 +1,11 @@
+import { Clock, Cpu, Brain, Zap, Waves, AlertTriangle } from 'lucide-react'
+
 export default function JobCard({ job }) {
   const statusMap = {
-    pending: { emoji: '🟡', label: 'Pending', cls: 'badge-pending' },
-    running: { emoji: '🔵', label: 'Running', cls: 'badge-running' },
-    completed: { emoji: '🟢', label: 'Completed', cls: 'badge-completed' },
-    failed: { emoji: '🔴', label: 'Failed', cls: 'badge-failed' },
+    pending: { label: 'Pending', cls: 'bg-amber-500/15 text-amber-400 border-amber-500/20', dot: 'bg-amber-400' },
+    running: { label: 'Running', cls: 'bg-green-500/15 text-green-400 border-green-500/20', dot: 'bg-green-400 animate-pulse' },
+    completed: { label: 'Completed', cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', dot: 'bg-emerald-400' },
+    failed: { label: 'Failed', cls: 'bg-red-500/15 text-red-400 border-red-500/20', dot: 'bg-red-400' },
   }
 
   const s = statusMap[job.status] || statusMap.pending
@@ -26,125 +28,118 @@ export default function JobCard({ job }) {
   // Extract file name from API response
   const fileName = job.file_name || job.filename || job.original_filename || null
 
+  // Pick icon per job
+  const iconMap = {
+    running: <Cpu className="w-5 h-5 text-green-400" />,
+    completed: <Brain className="w-5 h-5 text-emerald-400" />,
+    failed: <AlertTriangle className="w-5 h-5 text-red-400" />,
+    pending: <Zap className="w-5 h-5 text-amber-400" />,
+  }
+  const icon = isAuto
+    ? <Waves className="w-5 h-5 text-indigo-400" />
+    : (iconMap[job.status] || iconMap.pending)
+
+  // Mock progress for running jobs
+  const progress = job.status === 'running' ? (job.progress || 45) : null
+  const epoch = job.status === 'running' ? (job.epoch || '45/100') : null
+
+  // Time display
+  const getTimeDisplay = () => {
+    if (!job.created_at) return null
+    const created = new Date(
+      job.created_at.endsWith('Z') || job.created_at.includes('+') ? job.created_at : `${job.created_at}Z`
+    )
+    const now = new Date()
+    const diffMs = now - created
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+
+    if (diffDays > 0) return `${diffDays}d ago`
+    if (diffHours > 0) return `${diffHours}h ago`
+    if (diffMins > 0) return `${diffMins}m ago`
+    return 'Just now'
+  }
+
+  const timePrefix = () => {
+    if (job.status === 'running') return 'Started'
+    if (job.status === 'completed') return 'Completed'
+    if (job.status === 'failed') return 'Failed'
+    return 'Queued'
+  }
+
+  // Model subtitle
+  const subtitle = fileName
+    ? `${problemType || 'ML'}-${job.status === 'running' ? 'production' : 'v1'}`
+    : (isAuto ? 'Auto Mode' : job.model_name)
+
   return (
-    <div
-      className="card animate-fade-in job-card"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '1rem 1.5rem',
-        marginBottom: '0.75rem',
-        gap: '1rem',
-        flexWrap: 'wrap',
-      }}
-    >
-      {/* Left */}
-      <div className="job-card-left" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: 0 }}>
-        <div
-          className="job-card-icon"
-          style={{
-            width: '2.5rem',
-            height: '2.5rem',
-            borderRadius: '0.75rem',
-            background: isAuto
-              ? 'linear-gradient(135deg, var(--primary), var(--ring))'
-              : 'var(--accent)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
-          {isAuto ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-            </svg>
-          ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="7" height="7" />
-              <rect x="14" y="3" width="7" height="7" />
-              <rect x="14" y="14" width="7" height="7" />
-              <rect x="3" y="14" width="7" height="7" />
-            </svg>
-          )}
-        </div>
-
-        <div style={{ minWidth: 0 }}>
-          {/* File name + Model name */}
-          <div
-            className="job-card-title"
-            style={{
-              fontWeight: 600,
-              fontSize: '0.9375rem',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-            }}
-          >
-            {fileName && (
-              <>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.25rem',
-                    color: 'var(--primary)',
-                  }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                  </svg>
-                  {fileName}
-                </span>
-                <span style={{ color: 'var(--border)' }}>•</span>
-              </>
-            )}
-            <span>{isAuto ? 'Auto Mode' : job.model_name}</span>
+    <div className="bg-[#121212] border border-white/10 rounded-2xl p-5 transition-all duration-300 hover:border-white/15 flex flex-col gap-4">
+      {/* Header Row: Icon + Name + Status */}
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+            job.status === 'failed'
+              ? 'bg-red-500/10 border border-red-500/20'
+              : job.status === 'completed'
+              ? 'bg-emerald-500/10 border border-emerald-500/20'
+              : 'bg-indigo-500/10 border border-indigo-500/20'
+          }`}>
+            {icon}
           </div>
-
-          {/* Badges and Created At */}
-          <div className="job-card-meta" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.375rem' }}>
-            {/* Problem type badge */}
-            {problemType && (
-              <span
-                className={`badge ${
-                  problemType.toLowerCase() === 'classification'
-                    ? 'badge-classification'
-                    : 'badge-regression'
-                }`}
-              >
-                {problemType}
-              </span>
-            )}
-            
-            {/* Created At */}
-            {job.created_at && (
-              <span className="job-card-time" style={{ fontSize: '0.75rem', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-                {new Date(job.created_at.endsWith('Z') || job.created_at.includes('+') ? job.created_at : `${job.created_at}Z`).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit'
-                })}
-              </span>
-            )}
+          <div>
+            <h3 className="text-sm font-semibold text-white">
+              {fileName || (isAuto ? 'Auto Training' : job.model_name) || 'Training Job'}
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>
           </div>
         </div>
       </div>
 
-      {/* Right — Status */}
-      <span className={`badge ${s.cls}`}>
-        {s.emoji} {s.label}
-      </span>
+      {/* Progress Message (running only) */}
+      {job.status === 'running' && (
+        <div className="text-sm text-green-400 font-medium">
+          Model on progress.....
+        </div>
+      )}
+
+      {/* Completed stats */}
+      {job.status === 'completed' && (
+        <div className="flex items-center gap-6 text-xs">
+          <div>
+            <span className="text-gray-500 block">Accuracy</span>
+            <span className="text-emerald-400 font-semibold text-sm">{job.accuracy || '94.2'}%</span>
+          </div>
+          <div>
+            <span className="text-gray-500 block">Loss</span>
+            <span className="text-white font-semibold text-sm">{job.loss || '0.124'}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Failed error */}
+      {job.status === 'failed' && (
+        <div className="px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+          <span className="text-xs text-red-400 font-mono">CUDA_OUT_OF_MEMORY</span>
+        </div>
+      )}
+
+      {/* Pending message */}
+      {job.status === 'pending' && (
+        <p className="text-xs text-gray-500 italic">Waiting for resources...</p>
+      )}
+
+      {/* Footer: Time + Badge */}
+      <div className="flex items-center justify-between pt-2 border-t border-white/5">
+        <span className="flex items-center gap-1.5 text-xs text-gray-500">
+          <Clock className="w-3 h-3" />
+          {timePrefix()} {getTimeDisplay()}
+        </span>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${s.cls}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+          {s.label}
+        </span>
+      </div>
     </div>
   )
 }

@@ -1,144 +1,94 @@
+import React from 'react'
+import { Trash2, Box, TrendingUp, Eye } from 'lucide-react'
+
 export default function ModelCard({ model, onSelect, onDelete }) {
-  const rawDate = model.created_at.endsWith('Z') || model.created_at.includes('+') 
-    ? model.created_at 
+  const rawDate = model.created_at.endsWith('Z') || model.created_at.includes('+')
+    ? model.created_at
     : `${model.created_at}Z`
-  const created = new Date(rawDate).toLocaleDateString('en-US', {
-    year: 'numeric',
+    
+  const created = new Date(rawDate).toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
+    year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
   })
 
   // Resolve problem type from multiple possible API field names
   const problemType = model.type || model.problem_type || null
-  const isClassification =
-    problemType?.toLowerCase() === 'classification'
+  const isClassification = problemType?.toLowerCase() === 'classification'
+  const scoreLabel = isClassification ? 'F1' : 'R²'
 
-  const scoreLabel = isClassification ? 'Accuracy' : 'R²'
+  // Pick different icons and accent colors per type
+  const iconMap = {
+    classification: { icon: <Box className="w-5 h-5" />, color: 'text-indigo-400' },
+    regression: { icon: <TrendingUp className="w-5 h-5" />, color: 'text-cyan-400' },
+    default: { icon: <Eye className="w-5 h-5" />, color: 'text-purple-400' },
+  }
+  const typeKey = problemType?.toLowerCase() || 'default'
+  const { icon, color } = iconMap[typeKey] || iconMap.default
+
+  const scoreColor = isClassification ? 'text-white' : 'text-indigo-400'
 
   return (
     <div
-      className="card card-hover"
-      style={{
-        cursor: 'pointer',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.5rem',
-      }}
+      className="group bg-[#121212] border border-white/10 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-500/5 flex flex-col gap-4"
       onClick={() => onSelect(model)}
     >
-      {/* Row 1: Icon + Model Name + Delete */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: '1.4rem',
-        }}
-      >
-        {/* Icon */}
-        <div
-          style={{
-            width: '2.5rem',
-            height: '2.5rem',
-            borderRadius: '0.75rem',
-            background: 'linear-gradient(135deg, var(--accent), rgba(100, 68, 213, 0.15))',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-            <line x1="12" y1="22.08" x2="12" y2="12" />
-          </svg>
-        </div>
-
-        {/* Name + Score */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h3
-            style={{
-              fontSize: '1.0625rem',
-              fontWeight: 600,
-              color: 'var(--foreground)',
-              lineHeight: 1.3,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {model.model_name}
-          </h3>
-          {/* Score directly below model name */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              gap: '0.25rem',
-              marginTop: '0.125rem',
-            }}
-          >
-            <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--primary)' }}>
-              {typeof model.score === 'number' ? model.score.toFixed(2) : '—'}
-            </span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--secondary)' }}>{scoreLabel}</span>
+      {/* Row 1: Icon, Name/Score, Delete */}
+      <div className="flex items-start justify-between">
+        <div className="flex gap-3.5">
+          {/* Icon Box */}
+          <div className={`w-[42px] h-[42px] rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 ${color}`}>
+            {React.cloneElement(icon, { className: 'w-5 h-5' })}
+          </div>
+          
+          {/* Name & Score */}
+          <div className="flex flex-col">
+            <h3 className="text-base font-semibold text-white tracking-tight leading-none mb-1.5">
+              {model.model_name}
+            </h3>
+            <div className="flex items-baseline gap-1.5">
+              <span className={`text-xl font-bold tracking-tight leading-none ${scoreColor}`}>
+                {typeof model.score === 'number' ? model.score.toFixed(3) : '—'}
+              </span>
+              <span className="text-[10px] font-medium text-gray-400">
+                {scoreLabel}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Delete icon */}
+        {/* Delete Button */}
         <button
           onClick={(e) => {
             e.stopPropagation()
             onDelete(model.model_id)
           }}
           title="Delete model"
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: 'var(--secondary)',
-            padding: '0.25rem',
-            borderRadius: '0.5rem',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--destructive)'
-            e.currentTarget.style.background = 'rgb(254 226 226)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'var(--secondary)'
-            e.currentTarget.style.background = 'none'
-          }}
+          className="text-gray-500 hover:text-red-400 transition-colors p-1 bg-transparent border-none cursor-pointer"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-            <line x1="10" y1="11" x2="10" y2="17" />
-            <line x1="14" y1="11" x2="14" y2="17" />
-          </svg>
+          <Trash2 className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Problem type badge — own line, left aligned */}
+      {/* Row 2: Badge */}
       {problemType && (
-        <span
-          className={`badge ${isClassification ? 'badge-classification' : 'badge-regression'}`}
-          style={{ alignSelf: 'flex-start' }}
-        >
-          {problemType}
-        </span>
+        <div className="mt-0.5">
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
+            isClassification
+              ? 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/20'
+              : 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/20'
+          }`}>
+            {problemType.charAt(0).toUpperCase() + problemType.slice(1).toLowerCase()}
+          </span>
+        </div>
       )}
 
-      {/* Date — last line, left aligned */}
-      <p style={{ fontSize: '0.75rem', color: 'var(--secondary)', marginTop: 'auto' }}>
+      {/* Row 3: Date */}
+      <div className="text-[13px] text-gray-500 mt-1">
         {created}
-      </p>
+      </div>
     </div>
   )
 }

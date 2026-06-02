@@ -2,9 +2,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useContext, useState, useRef, useEffect } from 'react'
 import { logout, deleteAccount } from '../api'
 import { AuthContext } from '../App'
+import { Settings, LogOut, Trash2, User } from 'lucide-react'
 
 export default function Navbar() {
-  const { isAuth, authLoading } = useContext(AuthContext)
+  const { isAuth } = useContext(AuthContext)
   const { setIsAuth } = useContext(AuthContext)
   const navigate = useNavigate()
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -50,139 +51,52 @@ export default function Navbar() {
   }
 
   return (
-    <nav
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 30,
-        borderBottom: '1px solid var(--border)',
-      }}
-      className="glass"
-    >
-      <div
-        className="container"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          height: '4rem',
-        }}
-      >
+    <nav className="sticky top-0 z-30 bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-white/10">
+      <div className="max-w-[1400px] mx-auto px-6 flex items-center justify-between h-16">
         {/* Logo */}
-        <Link
-          to="/"
-          style={{
-            textDecoration: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-          }}
-        >
-          <img
-            src="/AutoML Icon.png"
-            alt="AutoML Icon"
-            style={{
-              width: '2.75rem',
-              height: '2.75rem',
-              borderRadius: '0.375rem',
-              objectFit: 'contain'
-            }}
-          />
-          <span
-            style={{
-              fontWeight: 700,
-              fontSize: '1.125rem',
-              color: 'var(--foreground)',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            AutoML API
+        <Link to="/" className="flex items-center gap-2 no-underline group">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-400 flex items-center justify-center">
+            <Settings className="w-4 h-4 text-white" />
+          </div>
+          <span className="font-bold text-base text-white tracking-tight">
+            AutoML.ai
           </span>
         </Link>
 
         {/* Right side */}
-        <div className="navbar-right" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div className="flex items-center gap-3">
           {isAuth ? (
             <>
-              <Link to="/dashboard" className="btn btn-primary btn-sm navbar-training-btn">Training Models</Link>
-              <div style={{ position: 'relative' }} ref={dropdownRef}>
-                <button 
-                  className="btn btn-outline btn-sm" 
+              <Link
+                to="/dashboard"
+                className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-all duration-200 no-underline"
+              >
+                <Settings className="w-4 h-4" />
+                Train Model
+              </Link>
+              <div className="relative" ref={dropdownRef}>
+                <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  className="w-9 h-9 rounded-full bg-[#1a1a1a] border border-white/10 flex items-center justify-center hover:bg-white/5 transition-all duration-200 cursor-pointer"
                   title="User Menu"
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
+                  <User className="w-4 h-4 text-gray-400" />
                 </button>
-                
+
                 {dropdownOpen && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    right: 0,
-                    marginTop: '0.5rem',
-                    background: 'var(--card, #fff)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '0.5rem',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                    minWidth: '160px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    overflow: 'hidden',
-                    zIndex: 40
-                  }}>
-                    <button 
+                  <div className="absolute top-full right-0 mt-2 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl min-w-[180px] overflow-hidden z-50 animate-fade-in">
+                    <button
                       onClick={handleSignOut}
-                      style={{
-                        padding: '0.75rem 1rem',
-                        background: 'none',
-                        border: 'none',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        color: 'var(--foreground)',
-                        borderBottom: '1px solid var(--border)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseOver={(e) => e.currentTarget.style.background = 'var(--accent)'}
-                      onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-all duration-200 border-b border-white/5 cursor-pointer bg-transparent border-none text-left"
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                        <polyline points="16 17 21 12 16 7" />
-                        <line x1="21" y1="12" x2="9" y2="12" />
-                      </svg>
+                      <LogOut className="w-4 h-4" />
                       Sign Out
                     </button>
-                    <button 
+                    <button
                       onClick={handleDeleteAccount}
-                      style={{
-                        padding: '0.75rem 1rem',
-                        background: 'none',
-                        border: 'none',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        color: 'var(--destructive, #ef4444)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseOver={(e) => e.currentTarget.style.background = 'var(--accent)'}
-                      onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all duration-200 cursor-pointer bg-transparent border-none text-left"
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M3 6h18" />
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      </svg>
+                      <Trash2 className="w-4 h-4" />
                       Delete Account
                     </button>
                   </div>
@@ -191,8 +105,12 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link to="/signin" className="btn btn-ghost btn-sm">Sign In</Link>
-              <Link to="/signup" className="btn btn-primary btn-sm">Sign Up</Link>
+              <Link to="/signin" className="text-sm text-gray-400 hover:text-white font-medium transition-colors no-underline">
+                Sign in
+              </Link>
+              <Link to="/signup" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-all duration-200 no-underline">
+                Sign Up
+              </Link>
             </>
           )}
         </div>
