@@ -7,8 +7,11 @@ import logging
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
-    accuracy_score, r2_score,
-    f1_score, mean_absolute_error, mean_squared_error
+    accuracy_score,
+    r2_score,
+    f1_score,
+    mean_absolute_error,
+    mean_squared_error,
 )
 from .analyzer import analyze_columns
 from .preprocessor import auto_drop_columns, decide_preprocessing
@@ -27,6 +30,7 @@ from storage.model_storage import upload_model
 # EVALUATION HELPER
 # ─────────────────────────────────────────────
 
+
 def _evaluate(pipeline, X_test, y_test, is_classification):
     """Returns primary score + full metrics dict."""
     y_pred = pipeline.predict(X_test)
@@ -34,19 +38,19 @@ def _evaluate(pipeline, X_test, y_test, is_classification):
     if is_classification:
         score = accuracy_score(y_test, y_pred)
         metrics = {
-            "accuracy":    round(float(score), 4),
-            "f1_weighted": round(float(f1_score(
-                y_test, y_pred, average="weighted", zero_division=0
-            )), 4),
+            "accuracy": round(float(score), 4),
+            "f1_weighted": round(
+                float(f1_score(y_test, y_pred, average="weighted", zero_division=0)), 4
+            ),
         }
     else:
         score = r2_score(y_test, y_pred)
-        mae   = mean_absolute_error(y_test, y_pred)
-        rmse  = float(np.sqrt(mean_squared_error(y_test, y_pred)))
+        mae = mean_absolute_error(y_test, y_pred)
+        rmse = float(np.sqrt(mean_squared_error(y_test, y_pred)))
         metrics = {
-            "r2":   round(float(score), 4),
-            "mae":  round(float(mae),   4),
-            "rmse": round(float(rmse),  4),
+            "r2": round(float(score), 4),
+            "mae": round(float(mae), 4),
+            "rmse": round(float(rmse), 4),
         }
 
     return float(score), metrics
@@ -56,14 +60,27 @@ def _evaluate(pipeline, X_test, y_test, is_classification):
 # MAIN ENTRY POINT
 # ─────────────────────────────────────────────
 
-def start_model_building(df, target_col, problemTypeB,
-                         modelName=None, timeout=300, file_name=None, user_id=None):
+
+def start_model_building(
+    df,
+    target_col,
+    problemTypeB,
+    modelName=None,
+    timeout=300,
+    file_name=None,
+    user_id=None,
+):
     """
     Tunes the selected model using focused Optuna search,
     uploads .pkl to Supabase Storage,
     saves metadata to Supabase DB.
     """
-    logger.info("Starting model building for user_id: %s, model: %s, target: %s", user_id, modelName, target_col)
+    logger.info(
+        "Starting model building for user_id: %s, model: %s, target: %s",
+        user_id,
+        modelName,
+        target_col,
+    )
 
     try:
         model_id = str(uuid6.uuid7())
@@ -73,8 +90,8 @@ def start_model_building(df, target_col, problemTypeB,
 
         # Check class imbalance for classification
         use_balanced = False
-        if problemTypeB and 'target_imbalance' in report:
-            use_balanced = report['target_imbalance']['is_imbalanced']
+        if problemTypeB and "target_imbalance" in report:
+            use_balanced = report["target_imbalance"]["is_imbalanced"]
 
         # ── 2. Drop useless columns ────────────────
         drop_cols, reasons = auto_drop_columns(df, target_col, report)
@@ -94,8 +111,7 @@ def start_model_building(df, target_col, problemTypeB,
         y = df[target_col]
 
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42,
-            stratify=y if problemTypeB else None
+            X, y, test_size=0.2, random_state=42, stratify=y if problemTypeB else None
         )
 
         # ── 6. Label encode classification targets ─
@@ -105,19 +121,17 @@ def start_model_building(df, target_col, problemTypeB,
             y_train = pd.Series(
                 label_encoder.fit_transform(y_train), index=y_train.index
             )
-            y_test = pd.Series(
-                label_encoder.transform(y_test), index=y_test.index
-            )
+            y_test = pd.Series(label_encoder.transform(y_test), index=y_test.index)
 
         # ── 7. Tune selected model with Optuna ─────
         best_pipeline = tune_selected_model(
-            preprocessor      = preprocessor,
-            X_train           = X_train,
-            y_train           = y_train,
-            model_name        = modelName,
-            is_classification = problemTypeB,
-            use_balanced      = use_balanced,
-            timeout           = timeout,
+            preprocessor=preprocessor,
+            X_train=X_train,
+            y_train=y_train,
+            model_name=modelName,
+            is_classification=problemTypeB,
+            use_balanced=use_balanced,
+            timeout=timeout,
         )
         best_pipeline.fit(X_train, y_train)
 
@@ -129,18 +143,18 @@ def start_model_building(df, target_col, problemTypeB,
 
         # ── 10. Build metadata dict ────────────────
         metadata = {
-            "model_id":      model_id,
-            "file_name":     file_name,
-            "model_name":    modelName,
-            "user_id":       user_id,        # ← add this line
-            "problem_type":  "Classification" if problemTypeB else "Regression",
+            "model_id": model_id,
+            "file_name": file_name,
+            "model_name": modelName,
+            "user_id": user_id,  # ← add this line
+            "problem_type": "Classification" if problemTypeB else "Regression",
             "target_column": target_col,
-            "score":         score,
-            "metrics":       metrics,
-            "dataset_rows":  int(df.shape[0]),
-            "dataset_cols":  int(df.shape[1]),
-            "storage_path":  storage_path,
-            "created_at":    datetime.now().strftime("%Y-%m-%d / %H:%M:%S"),
+            "score": score,
+            "metrics": metrics,
+            "dataset_rows": int(df.shape[0]),
+            "dataset_cols": int(df.shape[1]),
+            "storage_path": storage_path,
+            "created_at": datetime.now().strftime("%Y-%m-%d / %H:%M:%S"),
         }
 
         # Save target classes if classification
@@ -156,15 +170,15 @@ def start_model_building(df, target_col, problemTypeB,
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Model building failed: {str(e)}")
-    
+
 
 def start_auto_model_building(
     df,
     target_col,
     problemTypeB,
-    timeout  = 300,
-    file_name= None,
-    user_id  = None,
+    timeout=300,
+    file_name=None,
+    user_id=None,
 ):
     """
     Auto ML — Optuna selects the best model AND tunes its hyperparameters.
@@ -182,8 +196,8 @@ def start_auto_model_building(
         report = analyze_columns(df, target_col, is_classification=problemTypeB)
 
         use_balanced = False
-        if problemTypeB and 'target_imbalance' in report:
-            use_balanced = report['target_imbalance']['is_imbalanced']
+        if problemTypeB and "target_imbalance" in report:
+            use_balanced = report["target_imbalance"]["is_imbalanced"]
 
         # ── 2. Drop useless columns ──
         drop_cols, reasons = auto_drop_columns(df, target_col, report)
@@ -194,15 +208,14 @@ def start_auto_model_building(
 
         # ── 3. Preprocessing ──
         preprocess_plan = decide_preprocessing(df, report)
-        preprocessor    = build_pipeline(preprocess_plan)
+        preprocessor = build_pipeline(preprocess_plan)
 
         # ── 4. Split ──
         X = pd.DataFrame(df.drop(columns=[target_col]))
         y = df[target_col]
 
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42,
-            stratify=y if problemTypeB else None
+            X, y, test_size=0.2, random_state=42, stratify=y if problemTypeB else None
         )
 
         # ── 5. Label encode ──
@@ -212,18 +225,16 @@ def start_auto_model_building(
             y_train = pd.Series(
                 label_encoder.fit_transform(y_train), index=y_train.index
             )
-            y_test = pd.Series(
-                label_encoder.transform(y_test), index=y_test.index
-            )
+            y_test = pd.Series(label_encoder.transform(y_test), index=y_test.index)
 
         # ── 6. Auto tune — Optuna picks best model ──
         best_pipeline, best_model_name = tune_auto_select_model(
-            preprocessor      = preprocessor,
-            X_train           = X_train,
-            y_train           = y_train,
-            is_classification = problemTypeB,
-            use_balanced      = use_balanced,
-            timeout           = timeout,
+            preprocessor=preprocessor,
+            X_train=X_train,
+            y_train=y_train,
+            is_classification=problemTypeB,
+            use_balanced=use_balanced,
+            timeout=timeout,
         )
         best_pipeline.fit(X_train, y_train)
 
@@ -235,18 +246,18 @@ def start_auto_model_building(
 
         # ── 9. Metadata ──
         metadata = {
-            "model_id":      model_id,
-            "file_name":     file_name,
-            "model_name":    best_model_name,   # ← auto selected by Optuna
-            "user_id":       user_id,
-            "problem_type":  "Classification" if problemTypeB else "Regression",
+            "model_id": model_id,
+            "file_name": file_name,
+            "model_name": best_model_name,  # ← auto selected by Optuna
+            "user_id": user_id,
+            "problem_type": "Classification" if problemTypeB else "Regression",
             "target_column": target_col,
-            "score":         score,
-            "metrics":       metrics,
-            "dataset_rows":  int(df.shape[0]),
-            "dataset_cols":  int(df.shape[1]),
-            "storage_path":  storage_path,
-            "created_at":    datetime.now().strftime("%Y-%m-%d / %H:%M:%S"),
+            "score": score,
+            "metrics": metrics,
+            "dataset_rows": int(df.shape[0]),
+            "dataset_cols": int(df.shape[1]),
+            "storage_path": storage_path,
+            "created_at": datetime.now().strftime("%Y-%m-%d / %H:%M:%S"),
         }
 
         if label_encoder is not None:

@@ -8,25 +8,21 @@ def save_model_to_db(metadata: dict) -> dict:
     If model_id already exists, it updates the row.
     """
     row = {
-        "model_id":      metadata["model_id"],
-        "file_name":     metadata["file_name"],
-        "model_name":    metadata["model_name"],
-        "user_id":       metadata["user_id"],
-        "problem_type":  metadata["problem_type"],
+        "model_id": metadata["model_id"],
+        "file_name": metadata["file_name"],
+        "model_name": metadata["model_name"],
+        "user_id": metadata["user_id"],
+        "problem_type": metadata["problem_type"],
         "target_column": metadata["target_column"],
-        "score":         metadata["score"],
-        "metrics":       metadata["metrics"],
-        "dataset_rows":  metadata["dataset_rows"],
-        "dataset_cols":  metadata["dataset_cols"],
-        "storage_path":  metadata["storage_path"],
-        "created_at":    metadata["created_at"],
+        "score": metadata["score"],
+        "metrics": metadata["metrics"],
+        "dataset_rows": metadata["dataset_rows"],
+        "dataset_cols": metadata["dataset_cols"],
+        "storage_path": metadata["storage_path"],
+        "created_at": metadata["created_at"],
     }
 
-    response = (
-        supabase_admin.table("models")
-        .upsert(row)
-        .execute()
-    )
+    response = supabase_admin.table("models").upsert(row).execute()
 
     if not response.data:
         raise HTTPException(
@@ -66,7 +62,7 @@ def get_model_by_id(model_id: str, user_id: str) -> dict:
         supabase.table("models")
         .select("*")
         .eq("model_id", model_id)
-        .maybe_single()        # ← returns None if not found, no crash
+        .maybe_single()  # ← returns None if not found, no crash
         .execute()
     )
 
@@ -77,7 +73,7 @@ def get_model_by_id(model_id: str, user_id: str) -> dict:
             detail=f"Model '{model_id}' not found.",
         )
 
-    model = response.data      # ← direct dict, not response.data[0]
+    model = response.data  # ← direct dict, not response.data[0]
 
     # Ownership check
     if model["user_id"] != user_id:
@@ -94,16 +90,12 @@ def delete_model_from_db(model_id: str, user_id: str) -> bool:
     Deletes a model's metadata row from the DB.
     Ownership is already verified by get_model_by_id before this is called.
     """
-    supabase_admin.table("training_jobs")\
-        .delete()\
-        .eq("model_id", model_id)\
-        .eq("user_id", user_id)\
-        .execute()
+    supabase_admin.table("training_jobs").delete().eq("model_id", model_id).eq(
+        "user_id", user_id
+    ).execute()
 
-    supabase_admin.table("models")\
-        .delete()\
-        .eq("model_id", model_id)\
-        .eq("user_id", user_id)\
-        .execute()
+    supabase_admin.table("models").delete().eq("model_id", model_id).eq(
+        "user_id", user_id
+    ).execute()
 
     return True

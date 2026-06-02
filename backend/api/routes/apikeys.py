@@ -16,20 +16,23 @@ router = APIRouter(prefix="/api-keys", tags=["API Keys"])
 
 # ---------- Request schemas ----------
 
+
 class CreateKeyRequest(BaseModel):
     name: str  # user-friendly label, e.g. "My App", "Testing"
 
 
 # ---------- Response schemas ----------
 
+
 class CreateKeyResponse(BaseModel):
     """
     Returned ONCE at creation time — raw_key is never shown again.
     """
-    key_id:     str
-    name:       str
-    raw_key:    str       # shown ONCE — user must copy it now
-    key_prefix: str       # e.g. "sk-a3b2f1..."
+
+    key_id: str
+    name: str
+    raw_key: str  # shown ONCE — user must copy it now
+    key_prefix: str  # e.g. "sk-a3b2f1..."
     created_at: str
 
 
@@ -37,16 +40,18 @@ class KeySummary(BaseModel):
     """
     Returned when listing keys — raw key is NEVER included.
     """
-    key_id:       str
-    name:         str
-    key_prefix:   str
-    created_at:   str
+
+    key_id: str
+    name: str
+    key_prefix: str
+    created_at: str
     last_used_at: str | None
 
 
 # ─────────────────────────────────────────────
 # 1. POST /api-keys/  → Generate a new API key
 # ─────────────────────────────────────────────
+
 
 @router.post(
     "/",
@@ -91,6 +96,7 @@ async def generate_api_key(
 # 2. GET /api-keys/  → List all keys (no raw key)
 # ─────────────────────────────────────────────
 
+
 @router.get(
     "/",
     response_model=list[KeySummary],
@@ -113,6 +119,7 @@ async def list_keys(
 # ─────────────────────────────────────────────
 # 3. DELETE /api-keys/{key_id}  → Revoke a key
 # ─────────────────────────────────────────────
+
 
 @router.delete(
     "/{key_id}",

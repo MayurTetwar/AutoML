@@ -31,7 +31,7 @@ def _generate_raw_key() -> str:
 def create_api_key(user_id: str, name: str) -> dict:
     """
     Generates a new API key.
-    
+
     Returns dict with the raw key ONCE — caller must show it to the user
     and never store it. Only the hash is persisted in the database.
     """
@@ -41,12 +41,12 @@ def create_api_key(user_id: str, name: str) -> dict:
     now = datetime.now().isoformat()
 
     row = {
-        "key_id":       key_id,
-        "user_id":      user_id,
-        "name":         name.strip()[:100],   # cap name at 100 chars
-        "key_hash":     key_hash,
-        "key_prefix":   raw_key[:10] + "...",  # store "sk-xxxxxx..." for display
-        "created_at":   now,
+        "key_id": key_id,
+        "user_id": user_id,
+        "name": name.strip()[:100],  # cap name at 100 chars
+        "key_hash": key_hash,
+        "key_prefix": raw_key[:10] + "...",  # store "sk-xxxxxx..." for display
+        "created_at": now,
         "last_used_at": None,
     }
 
@@ -59,9 +59,9 @@ def create_api_key(user_id: str, name: str) -> dict:
 
     # Return the raw key exactly once — it is NOT stored anywhere
     return {
-        "key_id":     saved["key_id"],
-        "name":       saved["name"],
-        "raw_key":    raw_key,          # shown to user ONCE
+        "key_id": saved["key_id"],
+        "name": saved["name"],
+        "raw_key": raw_key,  # shown to user ONCE
         "key_prefix": saved["key_prefix"],
         "created_at": saved["created_at"],
     }
@@ -104,25 +104,20 @@ def delete_all_api_keys_for_user(user_id: str) -> int:
     Deletes all API keys for a user. Used during account deletion.
     Returns the count of deleted keys.
     """
-    response = (
-        supabase_admin.table(TABLE)
-        .delete()
-        .eq("user_id", user_id)
-        .execute()
-    )
+    response = supabase_admin.table(TABLE).delete().eq("user_id", user_id).execute()
     return len(response.data) if response.data else 0
 
 
 def lookup_api_key(raw_key: str) -> dict | None:
     """
     Looks up an API key by its hash.
-    
+
     Called during authentication — hashes the incoming raw key,
     searches the database for a matching hash, and returns the
     associated user_id.
-    
+
     Also updates last_used_at timestamp.
-    
+
     Returns: {"user_id": "...", "key_id": "...", "name": "..."} or None
     """
     key_hash = _hash_key(raw_key)
@@ -142,10 +137,9 @@ def lookup_api_key(raw_key: str) -> dict | None:
 
     # Update last_used_at (fire-and-forget, don't block auth on this)
     try:
-        supabase_admin.table(TABLE)\
-            .update({"last_used_at": datetime.now().isoformat()})\
-            .eq("key_id", key_data["key_id"])\
-            .execute()
+        supabase_admin.table(TABLE).update(
+            {"last_used_at": datetime.now().isoformat()}
+        ).eq("key_id", key_data["key_id"]).execute()
     except Exception:
         # Non-critical — don't fail auth if timestamp update fails
         logger.warning("Failed to update last_used_at for key %s", key_data["key_id"])

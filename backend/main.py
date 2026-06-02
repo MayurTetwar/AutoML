@@ -19,7 +19,7 @@
 #         "Holiday": "No Holiday",
 #         "Functioning Day": "Yes",
 #         "Date": "01/12/2017"
-#     } 
+#     }
 #     input_df = pd.DataFrame([input_data])
 #     pipeline = joblib.load("output_models/model.pkl")
 
@@ -32,6 +32,7 @@ import logging
 import json
 from datetime import datetime
 
+
 # Custom JSON formatter for structured logging
 class JSONFormatter(logging.Formatter):
     def format(self, record):
@@ -41,18 +42,19 @@ class JSONFormatter(logging.Formatter):
             "message": record.getMessage(),
             "module": record.module,
             "function": record.funcName,
-            "line": record.lineno
+            "line": record.lineno,
         }
         if record.exc_info:
             log_entry["exception"] = self.formatException(record.exc_info)
         return json.dumps(log_entry)
 
+
 logging.basicConfig(
     level=logging.INFO,
     handlers=[
         # logging.StreamHandler(),  # Console output
-        logging.FileHandler('app.log')  # File output
-    ]
+        logging.FileHandler("app.log")  # File output
+    ],
 )
 
 # I allow to use only 1 handler of app.log and comment out console output
@@ -61,30 +63,33 @@ for handler in logging.getLogger().handlers:
 
 logger = logging.getLogger(__name__)
 
-#--------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.routes import models, train, auth, apikeys
+
 app = FastAPI(
     title="AutoML API",
-    description="Train and serve ML models. All model operations require authentication.",              
+    description="Train and serve ML models. All model operations require authentication.",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # replace "*" with your frontend URL in production
+    allow_origins=["*"],  # replace "*" with your frontend URL in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
- 
+
 # --- Routers ---
 from api.routes import models, train, auth, apikeys
-app.include_router(auth.router) 
+
+app.include_router(auth.router)
 app.include_router(train.router)
 app.include_router(models.router)
 app.include_router(apikeys.router)
+
 
 @app.get("/", tags=["Health"])
 def health():

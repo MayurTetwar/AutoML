@@ -15,6 +15,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 # ---------- Request schemas ----------
 
+
 class AuthRequest(BaseModel):
     email: EmailStr
     password: str
@@ -22,16 +23,18 @@ class AuthRequest(BaseModel):
 
 # ---------- Response schemas ----------
 
+
 class AuthResponse(BaseModel):
-    message:      str
-    access_token: str        # user stores this and sends in every future request
-    token_type:   str = "bearer"
-    user_id:      str
+    message: str
+    access_token: str  # user stores this and sends in every future request
+    token_type: str = "bearer"
+    user_id: str
 
 
 # ─────────────────────────────────────────────
 # 1. POST /auth/signup
 # ─────────────────────────────────────────────
+
 
 @router.post(
     "/signup",
@@ -57,9 +60,9 @@ async def signup(body: AuthRequest):
             )
 
         return AuthResponse(
-            message      = "Account created successfully. You can now log in.",
-            access_token = response.session.access_token,
-            user_id      = str(response.user.id),
+            message="Account created successfully. You can now log in.",
+            access_token=response.session.access_token,
+            user_id=str(response.user.id),
         )
 
     except HTTPException:
@@ -74,6 +77,7 @@ async def signup(body: AuthRequest):
 # ─────────────────────────────────────────────
 # 2. POST /auth/login
 # ─────────────────────────────────────────────
+
 
 @router.post(
     "/login",
@@ -101,9 +105,9 @@ async def login(body: AuthRequest):
             )
 
         return AuthResponse(
-            message      = "Login successful.",
-            access_token = response.session.access_token,
-            user_id      = str(response.user.id),
+            message="Login successful.",
+            access_token=response.session.access_token,
+            user_id=str(response.user.id),
         )
 
     except HTTPException:
@@ -118,6 +122,7 @@ async def login(body: AuthRequest):
 # ─────────────────────────────────────────────
 # 3. POST /auth/logout
 # ─────────────────────────────────────────────
+
 
 @router.post(
     "/logout",
@@ -143,6 +148,7 @@ async def logout():
 # 3b. GET /auth/me  — verify token is still valid
 # ─────────────────────────────────────────────
 
+
 @router.get(
     "/me",
     status_code=status.HTTP_200_OK,
@@ -160,6 +166,7 @@ async def me(user_id: str = Depends(get_current_user)):
 # ─────────────────────────────────────────────
 # 4. DELETE /auth/delete-account
 # ─────────────────────────────────────────────
+
 
 @router.delete(
     "/delete-account",
@@ -193,11 +200,11 @@ async def delete_account(
         )
 
     deleted_models = []
-    failed_models  = []
+    failed_models = []
 
     # ── Steps 2–4: clean up each model ──
     for model in models:
-        model_id     = model["model_id"]
+        model_id = model["model_id"]
         storage_path = model.get("storage_path")
 
         try:
@@ -206,11 +213,9 @@ async def delete_account(
                 delete_model_from_storage(storage_path)
 
             # Delete metadata row from DB — uses admin client to bypass RLS
-            supabase_admin.table("models")\
-                .delete()\
-                .eq("model_id", model_id)\
-                .eq("user_id", user_id)\
-                .execute()
+            supabase_admin.table("models").delete().eq("model_id", model_id).eq(
+                "user_id", user_id
+            ).execute()
 
             # Evict from in-memory cache
             model_cache.invalidate(model_id)
@@ -224,10 +229,7 @@ async def delete_account(
     # ── Step 5: delete all training job records ──
     # Must be done before deleting the user from auth
     try:
-        supabase_admin.table("training_jobs")\
-            .delete()\
-            .eq("user_id", user_id)\
-            .execute()
+        supabase_admin.table("training_jobs").delete().eq("user_id", user_id).execute()
     except Exception as e:
         # Non-fatal — log and continue
         print(f"Warning: could not delete training jobs for {user_id}: {str(e)}")
@@ -253,8 +255,8 @@ async def delete_account(
         )
 
     return {
-        "message":        "Account and all associated models deleted successfully.",
-        "user_id":        user_id,
+        "message": "Account and all associated models deleted successfully.",
+        "user_id": user_id,
         "models_deleted": deleted_models,
-        "models_failed":  failed_models,
+        "models_failed": failed_models,
     }

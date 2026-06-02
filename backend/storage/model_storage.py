@@ -3,7 +3,7 @@ import joblib
 import zipfile
 from storage.supabase_client import supabase_admin
 
-BUCKET_NAME = "models"   # must match the bucket you created in Supabase dashboard
+BUCKET_NAME = "models"  # must match the bucket you created in Supabase dashboard
 
 
 def upload_model(pipeline, model_id: str) -> str:
@@ -21,16 +21,16 @@ def upload_model(pipeline, model_id: str) -> str:
 
     # Zip the bytes in memory
     zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+    with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("model.pkl", pkl_bytes)
     zip_bytes = zip_buffer.getvalue()
 
     storage_path = f"models/{model_id}.zip"
 
     response = supabase_admin.storage.from_(BUCKET_NAME).upload(
-        path         = storage_path,
-        file         = zip_bytes,
-        file_options = {"content-type": "application/zip"}
+        path=storage_path,
+        file=zip_bytes,
+        file_options={"content-type": "application/zip"},
     )
 
     # print(f"✅ Model uploaded to Supabase Storage: {storage_path}")
@@ -45,7 +45,7 @@ def download_model(storage_path: str):
     file_bytes = supabase_admin.storage.from_(BUCKET_NAME).download(storage_path)
 
     zip_buffer = io.BytesIO(file_bytes)
-    with zipfile.ZipFile(zip_buffer, 'r') as zf:
+    with zipfile.ZipFile(zip_buffer, "r") as zf:
         pkl_bytes = zf.read("model.pkl")
     buffer = io.BytesIO(pkl_bytes)
 

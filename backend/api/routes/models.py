@@ -15,15 +15,13 @@ from storage.model_cache import model_cache
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
-    prefix="/models",
-    tags=["Models"]
-)
+router = APIRouter(prefix="/models", tags=["Models"])
 
 
 # ─────────────────────────────────────────────
 # HELPERS  (unchanged from your original)
 # ─────────────────────────────────────────────
+
 
 def _get_pipeline(model_id: str, storage_path: str):
     """
@@ -45,20 +43,22 @@ def _get_pipeline(model_id: str, storage_path: str):
 def _get_feature_names(pipeline) -> list:
     """Extract expected feature names from the fitted preprocessor."""
     try:
-        return pipeline.named_steps['preprocessor']\
-                       .feature_names_in_.tolist()
+        return pipeline.named_steps["preprocessor"].feature_names_in_.tolist()
     except AttributeError:
         raise HTTPException(
             status_code=500,
-            detail="Could not read model features. Please retrain the model."
+            detail="Could not read model features. Please retrain the model.",
         )
 
 
 def serialize(value):
     """Convert numpy types → Python native for JSON serialization."""
-    if isinstance(value, np.integer):  return int(value)
-    if isinstance(value, np.floating): return float(round(value, 4))
-    if isinstance(value, np.ndarray):  return value.tolist()
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.floating):
+        return float(round(value, 4))
+    if isinstance(value, np.ndarray):
+        return value.tolist()
     return value
 
 
@@ -67,9 +67,10 @@ def serialize(value):
 #    Returns only THIS user's models from Supabase DB
 # ─────────────────────────────────────────────
 
+
 @router.get("/")
 async def list_models(
-    user_id: str = Depends(get_current_user),   # ← protected
+    user_id: str = Depends(get_current_user),  # ← protected
 ):
     """
     Get all models belonging to the logged-in user.
@@ -82,26 +83,22 @@ async def list_models(
         raise HTTPException(status_code=500, detail=f"DB error: {str(e)}")
 
     if not models:
-        return JSONResponse(status_code=200, content={
-            "total":  0,
-            "models": []
-        })
+        return JSONResponse(status_code=200, content={"total": 0, "models": []})
 
     summary = [
         {
-            "model_id":   m["model_id"],
+            "model_id": m["model_id"],
             "model_name": m.get("model_name", "Unknown"),
-            "type":       m.get("problem_type", "Unknown"),
-            "score":      m.get("score"),
+            "type": m.get("problem_type", "Unknown"),
+            "score": m.get("score"),
             "created_at": m.get("created_at", "N/A"),
         }
         for m in models
     ]
 
-    return JSONResponse(status_code=200, content={
-        "total":  len(summary),
-        "models": summary
-    })
+    return JSONResponse(
+        status_code=200, content={"total": len(summary), "models": summary}
+    )
 
 
 # ─────────────────────────────────────────────
@@ -109,10 +106,11 @@ async def list_models(
 #    Returns full metadata — only if owned by this user
 # ─────────────────────────────────────────────
 
+
 @router.get("/{model_id}")
 async def get_model(
     model_id: str,
-    user_id: str = Depends(get_current_user),   # ← protected
+    user_id: str = Depends(get_current_user),  # ← protected
 ):
     """
     Get full metadata of a specific model.
@@ -127,10 +125,11 @@ async def get_model(
 #    Returns expected features — only if owned by this user
 # ─────────────────────────────────────────────
 
+
 @router.get("/{model_id}/features")
 async def get_features_endpoint(
     model_id: str,
-    user_id: str = Depends(get_current_user),   # ← protected
+    user_id: str = Depends(get_current_user),  # ← protected
 ):
     """
     Get list of features this model expects.
@@ -145,26 +144,37 @@ async def get_features_endpoint(
     # Map transformer name → human-readable type (your original logic)
     feature_info = {}
     try:
-        preprocessor = pipeline.named_steps['preprocessor']
+        preprocessor = pipeline.named_steps["preprocessor"]
         for name, transformer, cols in preprocessor.transformers_:
             for col in cols:
-                if name == "num":        feature_info[col] = "float"
-                elif name == "num_log":  feature_info[col] = "float"
-                elif name == "cat_low":  feature_info[col] = "string"
-                elif name == "cat_high": feature_info[col] = "string"
-                elif name == "binary":   feature_info[col] = "int (0 or 1)"
-                elif name == "bool":     feature_info[col] = "boolean"
-                elif name == "datetime": feature_info[col] = "string (date)"
-                elif name == "ordinal":  feature_info[col] = "int"
+                if name == "num":
+                    feature_info[col] = "float"
+                elif name == "num_log":
+                    feature_info[col] = "float"
+                elif name == "cat_low":
+                    feature_info[col] = "string"
+                elif name == "cat_high":
+                    feature_info[col] = "string"
+                elif name == "binary":
+                    feature_info[col] = "int (0 or 1)"
+                elif name == "bool":
+                    feature_info[col] = "boolean"
+                elif name == "datetime":
+                    feature_info[col] = "string (date)"
+                elif name == "ordinal":
+                    feature_info[col] = "int"
     except Exception:
         feature_info = {f: "any" for f in features}
 
-    return JSONResponse(status_code=200, content={
-        "model_id":      model_id,
-        "feature_count": len(features),
-        "features":      feature_info,
-        "example_input": {feat: "?" for feat in features}
-    })
+    return JSONResponse(
+        status_code=200,
+        content={
+            "model_id": model_id,
+            "feature_count": len(features),
+            "features": feature_info,
+            "example_input": {feat: "?" for feat in features},
+        },
+    )
 
 
 # ─────────────────────────────────────────────
@@ -172,11 +182,12 @@ async def get_features_endpoint(
 #    Prediction — only if owned by this user
 # ─────────────────────────────────────────────
 
+
 @router.post("/{model_id}/predict")
 async def predict(
     model_id: str,
     input_data: dict,
-    user_id: str = Depends(get_current_user),   # ← protected
+    user_id: str = Depends(get_current_user),  # ← protected
 ):
     """
     Generic prediction endpoint — works for ANY trained model.
@@ -199,33 +210,27 @@ async def predict(
         raise HTTPException(
             status_code=400,
             detail={
-                "error":    "Missing features in input",
-                "missing":  missing,
-                "expected": expected
-            }
+                "error": "Missing features in input",
+                "missing": missing,
+                "expected": expected,
+            },
         )
 
     # 5. Build DataFrame in correct column order
     try:
         data = pd.DataFrame([{feat: input_data[feat] for feat in expected}])
     except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid input data: {str(e)}"
-        )
+        raise HTTPException(status_code=400, detail=f"Invalid input data: {str(e)}")
 
     # 6. Predict
     try:
         prediction = pipeline.predict(data)
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Prediction failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
 
     # 7. Build response (your original structure, fully preserved)
     result = {
-        "model_id":   model_id,
+        "model_id": model_id,
         "prediction": serialize(prediction[0]),
     }
 
@@ -237,10 +242,10 @@ async def predict(
             result["prediction_label"] = target_classes[pred_index]
 
     # Confidence score — only for classifiers that support predict_proba
-    if hasattr(pipeline.named_steps['model'], 'predict_proba'):
+    if hasattr(pipeline.named_steps["model"], "predict_proba"):
         try:
             proba = pipeline.predict_proba(data)
-            result["confidence"]   = round(float(proba.max()), 4)
+            result["confidence"] = round(float(proba.max()), 4)
             result["confidence_%"] = f"{round(float(proba.max()) * 100, 2)}%"
         except Exception:
             pass
@@ -254,10 +259,11 @@ async def predict(
 #    Only if owned by this user
 # ─────────────────────────────────────────────
 
+
 @router.delete("/{model_id}")
 async def delete_model(
     model_id: str,
-    user_id: str = Depends(get_current_user),   # ← protected
+    user_id: str = Depends(get_current_user),  # ← protected
 ):
     """
     Delete a trained model permanently.
@@ -267,7 +273,7 @@ async def delete_model(
     # 1. Get model + ownership check
     model = get_model_by_id(model_id=model_id, user_id=user_id)
 
-    model_name   = model.get("model_name", "Unknown")
+    model_name = model.get("model_name", "Unknown")
     problem_type = model.get("problem_type", "Unknown")
     storage_path = model.get("storage_path")
 
@@ -278,7 +284,7 @@ async def delete_model(
         except Exception as e:
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to delete model file from storage: {str(e)}"
+                detail=f"Failed to delete model file from storage: {str(e)}",
             )
 
     # 3. Delete metadata row from Supabase DB
@@ -286,27 +292,30 @@ async def delete_model(
         delete_model_from_db(model_id=model_id, user_id=user_id)
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to delete model metadata from DB: {str(e)}"
+            status_code=500, detail=f"Failed to delete model metadata from DB: {str(e)}"
         )
 
     # 4. Remove from in-memory cache
     model_cache.invalidate(model_id)
 
-    return JSONResponse(status_code=200, content={
-        "message": f"Model '{model_id}' deleted successfully",
-        "deleted_model": {
-            "model_id":   model_id,
-            "model_name": model_name,
-            "type":       problem_type,
-        }
-    })
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": f"Model '{model_id}' deleted successfully",
+            "deleted_model": {
+                "model_id": model_id,
+                "model_name": model_name,
+                "type": problem_type,
+            },
+        },
+    )
 
 
 # ─────────────────────────────────────────────
 # 6. GET /models/cache/stats  (debug — no auth needed)
 #    Shows what's currently in the in-memory cache
 # ─────────────────────────────────────────────
+
 
 @router.get("/cache/stats")
 async def cache_stats():

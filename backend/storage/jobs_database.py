@@ -3,20 +3,21 @@ from storage.supabase_client import supabase
 
 TABLE = "training_jobs"
 
+
 def create_job(job_id: str, user_id: str, model_name: str) -> dict:
     """
     Creates a new training job with status 'pending'.
     Called immediately when user hits POST /train/
     """
     row = {
-        "job_id":      job_id,
-        "user_id":     user_id,
-        "status":      "pending",
-        "model_name":  model_name,
-        "model_id":    None,
-        "error":       None,
-        "created_at":  datetime.now().isoformat(),
-        "updated_at":  datetime.now().isoformat(),
+        "job_id": job_id,
+        "user_id": user_id,
+        "status": "pending",
+        "model_name": model_name,
+        "model_id": None,
+        "error": None,
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat(),
     }
 
     response = supabase.table(TABLE).insert(row).execute()
@@ -33,9 +34,9 @@ def update_job_status(
     Updates job status.
     status options: 'pending' → 'running' → 'completed' or 'failed'
     """
-    
+
     row = {
-        "status":     status,
+        "status": status,
         "updated_at": datetime.now().isoformat(),
     }
 
@@ -43,14 +44,9 @@ def update_job_status(
         row["model_id"] = model_id
 
     if error:
-        row["error"] = error[:500]   # trim long errors
+        row["error"] = error[:500]  # trim long errors
 
-    response = (
-        supabase.table(TABLE)
-        .update(row)
-        .eq("job_id", job_id)
-        .execute()
-    )
+    response = supabase.table(TABLE).update(row).eq("job_id", job_id).execute()
     return response.data[0] if response.data else {}
 
 
@@ -95,9 +91,5 @@ def delete_job(job_id: str, user_id: str) -> bool:
     Deletes a job record.
     Only deletes if it belongs to this user.
     """
-    supabase.table(TABLE)\
-        .delete()\
-        .eq("job_id", job_id)\
-        .eq("user_id", user_id)\
-        .execute()
+    supabase.table(TABLE).delete().eq("job_id", job_id).eq("user_id", user_id).execute()
     return True

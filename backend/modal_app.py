@@ -14,7 +14,6 @@ image = (
         # Data
         "pandas==2.2.0",
         "numpy==1.26.4",
-
         # ML
         "scikit-learn==1.4.0",
         "xgboost==2.0.3",
@@ -22,19 +21,18 @@ image = (
         "optuna==3.5.0",
         "joblib==1.3.2",
         "category-encoders==2.6.3",
-
         # FastAPI
         "fastapi==0.110.0",
         "uvicorn==0.27.0",
         "pydantic[email]==2.13.2",
         "python-multipart==0.0.9",
-
         # Utils
         "uuid6==2025.0.1",
         "supabase==2.29.0",
         "python-dotenv==1.2.2",
-        "openpyxl",          # excel support — no strict version needed
-    ).add_local_dir(".", remote_path="/root")
+        "openpyxl",  # excel support — no strict version needed
+    )
+    .add_local_dir(".", remote_path="/root")
 )
 
 # ─────────────────────────────────────────────
@@ -42,8 +40,8 @@ image = (
 # ─────────────────────────────────────────────
 
 app = modal.App(
-    name  = "automl-api",
-    image = image,
+    name="automl-api",
+    image=image,
 )
 
 
@@ -67,111 +65,116 @@ secrets = [modal.Secret.from_name("automl-secrets")]
 # allow_concurrent_inputs=10 → handle 10 requests at once
 # ─────────────────────────────────────────────
 
+
 @app.function(
-    secrets = secrets,
-    cpu     = 4,
-    memory  = 16384,
-    timeout = 3600,
+    secrets=secrets,
+    cpu=4,
+    memory=16384,
+    timeout=3600,
 )
 def run_training(
-    job_id:       str,
-    user_id:      str,
-    df_json:      str,
-    target_col:   str,
+    job_id: str,
+    user_id: str,
+    df_json: str,
+    target_col: str,
     problem_type: bool,
-    model_name:   str,
-    timeout:      int,
-    file_name:    str,
-): 
+    model_name: str,
+    timeout: int,
+    file_name: str,
+):
     try:
         df = pd.read_json(df_json)
 
         update_job_status(job_id=job_id, status="running")
 
         result = start_model_building(
-            df           = df,
-            target_col   = target_col,
-            problemTypeB = problem_type,
-            modelName    = model_name,
-            timeout      = timeout,
-            file_name    = file_name,
-            user_id      = user_id,
+            df=df,
+            target_col=target_col,
+            problemTypeB=problem_type,
+            modelName=model_name,
+            timeout=timeout,
+            file_name=file_name,
+            user_id=user_id,
         )
 
         update_job_status(
-            job_id   = job_id,
-            status   = "completed",
-            model_id = result["model_id"],
+            job_id=job_id,
+            status="completed",
+            model_id=result["model_id"],
         )
 
     except Exception as e:
         update_job_status(
-            job_id = job_id,
-            status = "failed",
-            error  = str(e),
+            job_id=job_id,
+            status="failed",
+            error=str(e),
         )
         raise
 
+
 @app.function(
-    secrets = secrets,
-    cpu     = 4,
-    memory  = 16384,    # 16GB RAM — auto mode tries more models, needs more memory
-    timeout = 7200,     # 2 hours — auto mode needs more time than single model
+    secrets=secrets,
+    cpu=4,
+    memory=16384,  # 16GB RAM — auto mode tries more models, needs more memory
+    timeout=7200,  # 2 hours — auto mode needs more time than single model
 )
 def run_auto_training(
-    job_id:       str,
-    user_id:      str,
-    df_json:      str,
-    target_col:   str,
+    job_id: str,
+    user_id: str,
+    df_json: str,
+    target_col: str,
     problem_type: bool,
-    timeout:      int,
-    file_name:    str,
+    timeout: int,
+    file_name: str,
 ):
     """
     Runs auto ML training on Modal infrastructure.
     Optuna selects the best model AND tunes hyperparameters.
     No model_name parameter — Optuna decides everything.
     """
- 
+
     try:
         df = pd.read_json(df_json)
- 
+
         update_job_status(job_id=job_id, status="running")
- 
+
         result = start_auto_model_building(
-            df           = df,
-            target_col   = target_col,
-            problemTypeB = problem_type,
-            timeout      = timeout,
-            file_name    = file_name,
-            user_id      = user_id,
+            df=df,
+            target_col=target_col,
+            problemTypeB=problem_type,
+            timeout=timeout,
+            file_name=file_name,
+            user_id=user_id,
         )
- 
+
         update_job_status(
-            job_id   = job_id,
-            status   = "completed",
-            model_id = result["model_id"],
+            job_id=job_id,
+            status="completed",
+            model_id=result["model_id"],
         )
- 
+
     except Exception as e:
         update_job_status(
-            job_id = job_id,
-            status = "failed",
-            error  = str(e),
+            job_id=job_id,
+            status="failed",
+            error=str(e),
         )
         raise
 
+
 @app.function(
-    secrets = secrets,
-    cpu     = 2,
-    memory  = 1024,
-    timeout = 60,
+    secrets=secrets,
+    cpu=2,
+    memory=1024,
+    timeout=60,
 )
 @modal.concurrent(max_inputs=10)
 @modal.asgi_app()
 def fastapi_app():
     from main import app as _app
+
     return _app
+
 
 # ─────────────────────────────────────────────
 # COMMANDS

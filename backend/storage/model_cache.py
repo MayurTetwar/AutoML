@@ -2,6 +2,7 @@ import threading
 import time
 from typing import Optional
 
+
 class ModelCache:
     """
     Thread-safe in-memory cache for loaded sklearn pipelines.
@@ -17,10 +18,10 @@ class ModelCache:
         ttl_seconds : how long a cached pipeline lives (default 30 min)
         max_size    : max number of pipelines to hold in memory (default 10)
         """
-        self._cache: dict         = {}   # model_id → {"pipeline": ..., "loaded_at": ...}
-        self._lock                = threading.Lock()
-        self.ttl_seconds          = ttl_seconds
-        self.max_size             = max_size
+        self._cache: dict = {}  # model_id → {"pipeline": ..., "loaded_at": ...}
+        self._lock = threading.Lock()
+        self.ttl_seconds = ttl_seconds
+        self.max_size = max_size
 
     # ─────────────────────────────────────────
     # PUBLIC API
@@ -59,11 +60,10 @@ class ModelCache:
                 print(f"  Cache full — evicting oldest: {oldest_id}")
                 del self._cache[oldest_id]
 
-            self._cache[model_id] = {
-                "pipeline":  pipeline,
-                "loaded_at": time.time()
-            }
-            print(f"  Cache SET for {model_id} ({len(self._cache)}/{self.max_size} slots used)")
+            self._cache[model_id] = {"pipeline": pipeline, "loaded_at": time.time()}
+            print(
+                f"  Cache SET for {model_id} ({len(self._cache)}/{self.max_size} slots used)"
+            )
 
     def invalidate(self, model_id: str):
         """
@@ -88,16 +88,18 @@ class ModelCache:
             entries = []
             for model_id, entry in self._cache.items():
                 age = now - entry["loaded_at"]
-                entries.append({
-                    "model_id":   model_id,
-                    "age_seconds": round(age, 1),
-                    "expires_in":  round(max(0, self.ttl_seconds - age), 1),
-                })
+                entries.append(
+                    {
+                        "model_id": model_id,
+                        "age_seconds": round(age, 1),
+                        "expires_in": round(max(0, self.ttl_seconds - age), 1),
+                    }
+                )
             return {
                 "cached_models": len(self._cache),
-                "max_size":      self.max_size,
-                "ttl_seconds":   self.ttl_seconds,
-                "entries":       entries,
+                "max_size": self.max_size,
+                "ttl_seconds": self.ttl_seconds,
+                "entries": entries,
             }
 
 
