@@ -82,7 +82,7 @@ def run_training(
     model_name:   str,
     timeout:      int,
     file_name:    str,
-):
+): 
     try:
         df = pd.read_json(df_json)
 

@@ -155,7 +155,7 @@ def start_model_building(df, target_col, problemTypeB,
         return metadata
 
     except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Model building failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Model building failed: {str(e)}")
     
 
 def start_auto_model_building(

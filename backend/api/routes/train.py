@@ -118,6 +118,18 @@ async def train(
         file_name    = file.filename,
     )
 
+    # Testing code
+    # from ml_training.trainer import start_model_building
+    # result = start_model_building(
+    #         df           = df,
+    #         target_col   = target_column,
+    #         problemTypeB = problem_type_classification,
+    #         modelName    = model_name,
+    #         timeout      = timeout,
+    #         file_name    = file.filename,
+    #         user_id      = user_id,
+    #     )
+
     return JSONResponse(
         status_code = 202,
         content     = {
