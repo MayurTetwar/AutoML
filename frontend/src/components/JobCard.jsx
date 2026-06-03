@@ -103,24 +103,10 @@ export default function JobCard({ job }) {
         </div>
       )}
 
-      {/* Completed stats */}
-      {job.status === 'completed' && (
-        <div className="flex items-center gap-6 text-xs">
-          <div>
-            <span className="text-gray-500 block">Accuracy</span>
-            <span className="text-emerald-400 font-semibold text-sm">{job.accuracy || '94.2'}%</span>
-          </div>
-          <div>
-            <span className="text-gray-500 block">Loss</span>
-            <span className="text-white font-semibold text-sm">{job.loss || '0.124'}</span>
-          </div>
-        </div>
-      )}
-
       {/* Failed error */}
       {job.status === 'failed' && (
         <div className="px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">
-          <span className="text-xs text-red-400 font-mono">CUDA_OUT_OF_MEMORY</span>
+          <span className="text-xs text-red-400 font-mono">FAILED TO BUILD</span>
         </div>
       )}
 
