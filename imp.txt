@@ -46,3 +46,45 @@ https://mayurtetwar123--automl-api-fastapi-app.modal.run/
 
 Webiste:- 
 https://automl-gamma.vercel.app
+
+*****************************************************************************************
+
+These are just standard numbers that mean:
+
+2xx = Success
+  200 → OK (request worked)
+  201 → Created (new thing was made)
+
+4xx = Client made a mistake
+  400 → Bad Request (wrong data sent)
+  401 → Unauthorized (not logged in)
+  403 → Forbidden (logged in but no permission)
+  404 → Not Found (wrong URL)
+  422 → Unprocessable (missing required fields)
+
+5xx = Server made a mistake
+  500 → Internal Server Error (your code crashed)
+
+In YOUR project:
+  POST /train/     → 200 (training started)
+  POST /auth/login → 200 (login success)
+  GET /models/xyz  → 404 (model not found)
+  Wrong token      → 401 (unauthorized)
+
+*****************************************************************************************
+
+API = a way for two programs to talk
+
+REST API = uses HTTP methods to do actions:
+  GET    → fetch/read data
+  POST   → create something new
+  PUT    → update something
+  DELETE → delete something
+
+In YOUR project:
+  GET  /models/        → list all models
+  POST /train/         → start training
+  POST /models/predict → get prediction
+  DELETE /models/xyz   → delete a model
+
+*****************************************************************************************

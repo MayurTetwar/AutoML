@@ -36,6 +36,6 @@ Thumbs.db
 
 # Project-specific / Temporary
 tmp/
-temp/
+temp/venv
 *.log
 .vercel
